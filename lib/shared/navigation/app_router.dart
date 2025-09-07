@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../auth/presentation/pages/signup_signin_page.dart';
-import '../../trip_planning/presentation/pages/home_page.dart';
-import '../../chat/presentation/pages/chat_page.dart';
+import '../../trip_planning_chat/presentation/pages/home_page.dart';
+import '../../trip_planning_chat/presentation/pages/chat_page.dart';
 import '../../auth/presentation/pages/profile_page.dart';
 import '../onboarding/onboarding_page.dart';
 
@@ -13,6 +13,7 @@ class AppRoutes {
   static const String home = '/home';
   static const String chat = '/chat';
   static const String profile = '/profile';
+  static const String sessionDemo = '/session-demo';
 }
 
 class AppRouter {
@@ -34,6 +35,7 @@ class AppRouter {
         return MaterialPageRoute(
           builder: (_) => ChatPage(
             initialPrompt: args?['initialPrompt'] as String?,
+            sessionId: args?['sessionId'] as String?,
           ),
         );
         

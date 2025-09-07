@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:smart_trip_planner_flutter/auth/domain/entities/user.dart' as domain;
 
-/// Data model for handling Supabase User data
+/// Data model for handling User data
 /// This class handles external data conversion and serialization
 @immutable
 class CustomAuthUser {
@@ -22,15 +21,28 @@ class CustomAuthUser {
     this.isEmailVerified = false,
   });
 
-  /// Convert from Supabase User to CustomAuthUser (Data Model)
-  factory CustomAuthUser.fromSupabase(supabase.User user) {
+  /// Get display name from metadata or fallback to email username
+  String get displayName {
+    if (metadata.containsKey('full_name') && metadata['full_name'] != null) {
+      return metadata['full_name'] as String;
+    }
+    return email.split('@').first; // Default to email username
+  }
+
+  /// Create a mock user with custom data
+  factory CustomAuthUser.mock({
+    required String email,
+    String? displayName,
+    String? avatarUrl,
+  }) {
+    final id = DateTime.now().millisecondsSinceEpoch.toString();
     return CustomAuthUser(
-      id: user.id,
-      email: user.email ?? '',
-      avatarUrl: user.userMetadata?['avatar_url'],
-      providerType: user.appMetadata['provider'],
-      metadata: user.userMetadata ?? {},
-      isEmailVerified: user.emailConfirmedAt != null,
+      id: id,
+      email: email,
+      avatarUrl: avatarUrl,
+      providerType: 'mock',
+      metadata: displayName != null ? {'full_name': displayName} : {},
+      isEmailVerified: true,
     );
   }
 

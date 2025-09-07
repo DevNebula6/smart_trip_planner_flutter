@@ -83,49 +83,54 @@ class _OnboardingScreenViewState extends State<OnboardingScreenView> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        TextButton(
-                          onPressed: () {
-                            _pageController.animateToPage(
-                              _pages.length - 1,
-                              duration: Duration(milliseconds: 700),
-                              curve: Curves.easeInOut
-                            );
-                          },
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                            shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-                            ),
+                        Flexible(
+                          child: TextButton(
+                            onPressed: () {
+                              _pageController.animateToPage(
+                                _pages.length - 1,
+                                duration: Duration(milliseconds: 700),
+                                curve: Curves.easeInOut
+                              );
+                            },
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                              shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                              ),
 
-                          ),
-                          child: Text(
-                            'Skip',
-                            style: TextStyle(
-                              color: AppColors.secondaryText,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
+                            ),
+                            child: Text(
+                              'Skip',
+                              style: TextStyle(
+                                color: AppColors.secondaryText,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ),
-                        ElevatedButton(
-                          onPressed: () {
-                            _pageController.nextPage(
-                              duration: const Duration(milliseconds: 300),
-                              curve: Curves.easeInOut,
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryGreen,
-                            foregroundColor: AppColors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                        const SizedBox(width: 16),
+                        Flexible(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              _pageController.nextPage(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryGreen,
+                              foregroundColor: AppColors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                              ),
+                              elevation: 2,
                             ),
-                            elevation: 2,
-                          ),
-                          child: const Text(
-                            'Next',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                            child: const Text(
+                              'Next',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                            ),
                           ),
                         ),
                       ],
@@ -183,36 +188,78 @@ class _OnboardingScreenViewState extends State<OnboardingScreenView> {
               ),
             ),
             const Spacer(flex: 1),
-            // Get Started Button (only on last page)
+            // Get Started Button and Demo Button (only on last page)
             if (page.isLast)
               Padding(
                 padding: const EdgeInsets.only(bottom: AppDimensions.paddingXL),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushReplacementNamed(context, AppRoutes.login);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryGreen,
-                      foregroundColor: AppColors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppDimensions.paddingXL,
-                        vertical: AppDimensions.paddingM,
+                child: Column(
+                  children: [
+                    // Main Get Started Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pushReplacementNamed(context, AppRoutes.login);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryGreen,
+                          foregroundColor: AppColors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppDimensions.paddingXL,
+                            vertical: AppDimensions.paddingM,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                          ),
+                          elevation: 2,
+                        ),
+                        child: const Text(
+                          'Get Started',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-                      ),
-                      elevation: 2,
                     ),
-                    child: const Text(
-                      'Get Started',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                    
+                    const SizedBox(height: 16),
+                    
+                    // Session Persistence Demo Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.pushNamed(context, AppRoutes.sessionDemo);
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primaryGreen,
+                          side: BorderSide(color: AppColors.primaryGreen, width: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppDimensions.paddingXL,
+                            vertical: AppDimensions.paddingM,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.account_tree, size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              '🔄 Session Persistence Demo',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             const Spacer(flex: 2),
