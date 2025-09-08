@@ -35,34 +35,43 @@ class CustomTextField extends StatelessWidget {
       enabled: enabled,
       onSubmitted: onSubmitted,
       onChanged: onChanged,
-      style: Theme.of(context).textTheme.bodyLarge,
+      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+        fontSize: 16,
+        height: 1.4,
+        color: AppColors.primaryText,
+      ),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
           color: AppColors.hintText,
+          fontSize: 16,
+          height: 1.4,
         ),
         suffixIcon: suffixIcon,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+          borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+          borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-          borderSide: const BorderSide(color: AppColors.primaryGreen, width: 2),
+          borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
+          borderSide: const BorderSide(
+            color: AppColors.primaryGreen,
+            width: 2,
+          ),
         ),
         disabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+          borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
           borderSide: BorderSide.none,
         ),
         filled: true,
-        fillColor: enabled ? AppColors.inputBackground : AppColors.lightGrey,
+        fillColor: Colors.transparent,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppDimensions.paddingM,
-          vertical: AppDimensions.paddingM,
+          horizontal: AppDimensions.paddingL,
+          vertical: AppDimensions.paddingL,
         ),
       ),
     );
