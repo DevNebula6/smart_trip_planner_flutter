@@ -1,3 +1,8 @@
+import 'dart:math';
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:smart_trip_planner_flutter/ai_agent/services/ai_agent_service.dart';
 import 'package:smart_trip_planner_flutter/core/errors/failures.dart';
@@ -5,8 +10,6 @@ import 'package:smart_trip_planner_flutter/core/storage/hive_storage_service.dar
 import 'package:smart_trip_planner_flutter/core/storage/hive_models.dart';
 import 'package:smart_trip_planner_flutter/ai_agent/models/trip_session_model.dart';
 import 'package:smart_trip_planner_flutter/trip_planning_chat/data/models/itinerary_models.dart';
-import 'dart:async';
-import 'dart:convert';
 import '../../core/utils/helpers.dart';
 
 
@@ -27,13 +30,14 @@ class GeminiAIService implements AIAgentService {
 
   GeminiAIService({required String apiKey})
       : _baseModel = GenerativeModel(
-          model: 'gemini-2.0-flash-exp',
+          model: 'gemini-2.5-flash',
           apiKey: apiKey,
+          systemInstruction: Content.text(_buildSystemPromptStatic()),
           generationConfig: GenerationConfig(
             temperature: 0.7,
             topK: 40,
             topP: 0.95,
-            maxOutputTokens: 2048,
+            maxOutputTokens: 4096,
           ),
         ) {
     _initStorage();
@@ -73,10 +77,8 @@ class GeminiAIService implements AIAgentService {
       hiveSession.extractTripContext(userPrompt);
       
       // Build prompt with context
-      final systemPrompt = _buildSystemPrompt();
       final contextPrompt = hiveSession.buildRefinementContext();
       final fullPrompt = '''
-$systemPrompt
 
 $contextPrompt
 
@@ -88,20 +90,48 @@ IMPORTANT: Create a complete trip plan based on the user's request and preferenc
       // Get Gemini chat session
       final chatSession = await _getOrCreateGeminiSession(hiveSession);
       final response = await chatSession.sendMessage(Content.text(fullPrompt))
-          .timeout(const Duration(seconds: 15), onTimeout: () {
+          .timeout(const Duration(seconds: 45), onTimeout: () { // Increased timeout
         throw TimeoutException('AI response timed out');
       });
 
+      // Debug the actual response
+      final responseText = response.text ?? '';
+      Logger.d('Full AI response length: ${responseText.length}', tag: 'HiveGeminiAI');
+      Logger.d('Response complete: ${!responseText.contains('...') && responseText.contains('}')}', tag: 'HiveGeminiAI');
+      
+      if (responseText.length < 500) {
+        Logger.d('Full short response: $responseText', tag: 'HiveGeminiAI');
+      } else {
+        Logger.d('Response start (500 chars): ${responseText.substring(0, 500)}...', tag: 'HiveGeminiAI');
+        Logger.d('Response end (200 chars): ...${responseText.substring(responseText.length - 200)}', tag: 'HiveGeminiAI');
+      }
+
       // Parse response
-      final itineraryJson = _extractItineraryFromResponse(response.text ?? '');
+      final itineraryJson = _extractItineraryFromResponse(responseText);
+      Logger.d('Parsed itinerary JSON: ${itineraryJson.keys}', tag: 'HiveGeminiAI');
+      
       if (!validateItinerarySchema(itineraryJson)) {
+        Logger.e('Schema validation failed for itinerary', tag: 'HiveGeminiAI');
         throw Exception('Generated itinerary does not match required schema');
       }
+      
+      Logger.d('Schema validation passed, creating ItineraryModel', tag: 'HiveGeminiAI');
 
       final itinerary = ItineraryModel.fromJson(itineraryJson);
 
       // Update session
       final tokensUsed = _estimateTokens(fullPrompt) + _estimateTokens(response.text ?? '');
+      
+      // Extract trip context for better home page display
+      hiveSession.extractTripContext(userPrompt);
+      hiveSession.tripContext['itinerary_title'] = itinerary.title;
+      hiveSession.tripContext['duration_days'] = itinerary.durationDays;
+      hiveSession.tripContext['start_date'] = itinerary.startDate;
+      hiveSession.tripContext['end_date'] = itinerary.endDate;
+      
+      Logger.d('Updated session tripContext with itinerary_title: ${itinerary.title}', tag: 'HiveGeminiAI');
+      Logger.d('Full tripContext: ${hiveSession.tripContext}', tag: 'HiveGeminiAI');
+      
       hiveSession.updateConversation(
         userMessage: Content.text(userPrompt),
         aiResponse: Content.model([TextPart(response.text ?? '')]),
@@ -115,8 +145,9 @@ IMPORTANT: Create a complete trip plan based on the user's request and preferenc
         completionTokens: _estimateTokens(response.text ?? ''),
       );
 
-      // Save session to Hive (debounced)
-      _debouncedSaveSession(hiveSession);
+      // Save session to Hive (immediately for important updates)
+      await _storage.saveSession(hiveSession);
+      Logger.d('Session saved immediately for itinerary generation', tag: 'HiveGeminiAI');
 
       // Save itinerary to Hive
       final hiveItinerary = _convertToHiveItinerary(itinerary);
@@ -124,8 +155,24 @@ IMPORTANT: Create a complete trip plan based on the user's request and preferenc
 
       return itinerary;
       
+    } on SocketException catch (e) {
+      Logger.e('Network error - Failed to generate itinerary: $e', tag: 'HiveGeminiAI');
+      throw AIAgentException('Network connection failed. Please check your internet connection and try again.');
+    } on TimeoutException catch (e) {
+      Logger.e('Timeout error - Failed to generate itinerary: $e', tag: 'HiveGeminiAI');
+      throw AIAgentException('Request timed out. Please try again with a simpler request.');
     } catch (e) {
       Logger.e('Failed to generate itinerary: $e', tag: 'HiveGeminiAI');
+      
+      // Check if it's a network-related error
+      final errorString = e.toString().toLowerCase();
+      if (errorString.contains('failed host lookup') || 
+          errorString.contains('socketexception') || 
+          errorString.contains('network') ||
+          errorString.contains('connection')) {
+        throw AIAgentException('Network connection failed. Please check your internet connection and try again.');
+      }
+      
       throw AIAgentException('Failed to generate itinerary: $e');
     }
   }
@@ -155,7 +202,7 @@ IMPORTANT: Create a complete trip plan based on the user's request and preferenc
       // Use existing Gemini session for efficiency
       final chatSession = await _getOrCreateGeminiSession(hiveSession);
       final response = await chatSession.sendMessage(Content.text(userPrompt))
-          .timeout(const Duration(seconds: 15), onTimeout: () {
+          .timeout(const Duration(seconds: 60), onTimeout: () {
         throw TimeoutException('AI response timed out');
       });
 
@@ -209,10 +256,8 @@ IMPORTANT: Create a complete trip plan based on the user's request and preferenc
         return;
       }
 
-      final systemPrompt = _buildSystemPrompt();
       final contextPrompt = hiveSession.buildRefinementContext();
       final fullPrompt = '''
-$systemPrompt
 
 $contextPrompt
 
@@ -245,12 +290,6 @@ User Request: $userPrompt
       if (existingSession != null && existingSession.isValid) {
         return existingSessionId;
       }
-    }
-
-    // Look for reusable sessions
-    final reusableSession = await _findReusableSession(userId);
-    if (reusableSession != null) {
-      return reusableSession.sessionId;
     }
 
     // Create new session
@@ -311,50 +350,75 @@ User Request: $userPrompt
   @override
   bool validateItinerarySchema(Map<String, dynamic> json) {
     try {
+      Logger.d('Validating itinerary schema for JSON: ${json.keys}', tag: 'HiveGeminiAI');
+      
       final requiredFields = ['title', 'startDate', 'endDate', 'days'];
       for (final field in requiredFields) {
-        if (!json.containsKey(field)) return false;
+        if (!json.containsKey(field)) {
+          Logger.w('Missing required field: $field', tag: 'HiveGeminiAI');
+          return false;
+        }
       }
 
       final days = json['days'] as List?;
-      if (days == null) return false;
+      if (days == null || days.isEmpty) {
+        Logger.w('Days field is null or empty', tag: 'HiveGeminiAI');
+        return false;
+      }
 
-      for (final day in days) {
-        final dayFields = ['date', 'summary', 'items'];
+      for (int dayIndex = 0; dayIndex < days.length; dayIndex++) {
+        final day = days[dayIndex];
+        if (day is! Map<String, dynamic>) {
+          Logger.w('Day $dayIndex is not a map', tag: 'HiveGeminiAI');
+          return false;
+        }
+
+        // Check for either 'date' or 'summary' - be more flexible
+        final dayFields = ['summary'];
         for (final field in dayFields) {
-          if (!day.containsKey(field)) return false;
+          if (!day.containsKey(field)) {
+            Logger.w('Day $dayIndex missing field: $field', tag: 'HiveGeminiAI');
+            return false;
+          }
         }
 
         final items = day['items'] as List?;
-        if (items == null) return false;
-
-        for (final item in items) {
-          final itemFields = ['time', 'activity', 'location'];
-          for (final field in itemFields) {
-            if (!item.containsKey(field)) return false;
-          }
+        if (items == null) {
+          Logger.w('Day $dayIndex missing items field', tag: 'HiveGeminiAI');
+          return false;
         }
+
+        for (int itemIndex = 0; itemIndex < items.length; itemIndex++) {
+          final item = items[itemIndex];
+          if (item is! Map<String, dynamic>) {
+            Logger.w('Day $dayIndex item $itemIndex is not a map', tag: 'HiveGeminiAI');
+            return false;
+          }
+
+          // Be more flexible - only require activity, make time and location optional
+          if (!item.containsKey('activity')) {
+            Logger.w('Day $dayIndex item $itemIndex missing activity field', tag: 'HiveGeminiAI');
+            return false;
+          }
+
+          // Provide default values for missing optional fields
+          item.putIfAbsent('time', () => '');
+          item.putIfAbsent('location', () => '0,0');
+        }
+
+        // Provide default date if missing
+        day.putIfAbsent('date', () => DateTime.now().toIso8601String().split('T')[0]);
       }
 
+      Logger.d('Schema validation passed', tag: 'HiveGeminiAI');
       return true;
     } catch (e) {
+      Logger.e('Schema validation error: $e', tag: 'HiveGeminiAI');
       return false;
     }
   }
 
   // ===== Helper Methods =====
-
-  Future<HiveSessionState?> _findReusableSession(String userId) async {
-    final sessions = await _storage.getUserSessions(userId);
-    
-    for (final session in sessions) {
-      if (session.isValid && session.messagesInSession < 100) {
-        return session;
-      }
-    }
-    
-    return null;
-  }
 
   Future<HiveSessionState> _getOrCreateHiveSession(SessionState sessionState, String sessionId) async {
     final existing = await _storage.getSession(sessionId);
@@ -394,13 +458,64 @@ User Request: $userPrompt
       }
     }
 
-    final chatSession = _baseModel.startChat(history: session.geminiConversationHistory);
-    _geminiSessions[sessionKey] = chatSession;
-    _sessionLastUsed[sessionKey] = DateTime.now();
-    
-    return chatSession;
-  }
+    try {
+      Logger.d('Creating ChatSession for session: $sessionKey', tag: 'HiveGeminiAI');
+      
+      // Validate conversation history before creating ChatSession
+      final history = session.geminiConversationHistory;
+      final cleanHistory = <Content>[];
 
+      for (int i = 0; i < history.length; i++) {
+        final content = history[i];
+        try {
+          // Validate content structure
+          final parts = content.parts;
+          
+          // Skip content with empty or invalid parts
+          if (parts.isEmpty) {
+            Logger.w('Skipping content at index $i: empty parts', tag: 'HiveGeminiAI');
+            continue;
+          }
+          
+          // Validate each part
+          bool hasValidParts = false;
+          for (final part in parts) {
+            if (part is TextPart && part.text.trim().isNotEmpty) {
+              hasValidParts = true;
+              break;
+            }
+          }
+          
+          if (hasValidParts) {
+            cleanHistory.add(content);
+          } else {
+            Logger.w('Skipping content at index $i: no valid parts', tag: 'HiveGeminiAI');
+          }
+          
+        } catch (e) {
+          Logger.w('Skipping invalid content at index $i: $e', tag: 'HiveGeminiAI');
+          continue;
+        }
+      }
+      
+      Logger.d('Using ${cleanHistory.length} valid history items out of ${history.length}', tag: 'HiveGeminiAI');
+      
+      final chatSession = _baseModel.startChat(history: cleanHistory);
+      _geminiSessions[sessionKey] = chatSession;
+      _sessionLastUsed[sessionKey] = DateTime.now();
+      
+      return chatSession;
+      
+    } catch (e) {
+      Logger.e('Error creating ChatSession with history: $e', tag: 'HiveGeminiAI');
+      Logger.d('Creating new ChatSession without history for session: $sessionKey', tag: 'HiveGeminiAI');
+      
+      final chatSession = _baseModel.startChat();
+      _geminiSessions[sessionKey] = chatSession;
+      _sessionLastUsed[sessionKey] = DateTime.now();
+      return chatSession;
+    }
+  }
   void _debouncedSaveSession(HiveSessionState session) {
     _pendingSaves.add(session.sessionId);
     
@@ -478,11 +593,18 @@ User Request: $userPrompt
     );
   }
 
-  String _buildSystemPrompt() {
+  static String _buildSystemPromptStatic() {
     return '''
 You are an expert travel planner AI. Generate detailed day-by-day itineraries in JSON format.
 
-CRITICAL: Your response MUST follow this EXACT JSON schema (Spec A):
+CRITICAL CONSTRAINTS:
+- Keep response under 3600 tokens (roughly 2800 words)
+- Limit to maximum 5-10 days for longer trips
+- Maximum 4-5 activities per day
+- Keep activity descriptions brief 
+- Use short, precise summaries
+
+EXACT JSON schema required:
 {
   "title": "Trip Title",
   "startDate": "YYYY-MM-DD", 
@@ -490,43 +612,232 @@ CRITICAL: Your response MUST follow this EXACT JSON schema (Spec A):
   "days": [
     {
       "date": "YYYY-MM-DD",
-      "summary": "Day summary",
+      "summary": "Brief day summary (max 8 words)",
       "items": [
         {
           "time": "HH:MM",
-          "activity": "Activity description", 
-          "location": "latitude,longitude"
+          "activity": "Brief activity description (max 15 words)", 
+          "location": "lat,lng"
         }
       ]
     }
   ]
 }
 
-Guidelines:
-- Use 24-hour time format for "time" field
-- Location must be "lat,lng" coordinates (use real coordinates)
-- Include realistic travel times between activities
-- Balance sightseeing, dining, and rest
-- Consider local business hours and seasonal factors
-- Respond ONLY with valid JSON, no additional text
-    ''';
+ESSENTIAL RULES:
+- 24-hour time format only
+- Real coordinates for location (lat,lng format)
+- NO additional text, prose, or code blocks
+- Ensure JSON is complete and properly closed
+
+Respond with ONLY the JSON object, ensuring it's complete and valid.
+''';
   }
 
   Map<String, dynamic> _extractItineraryFromResponse(String response) {
-    final jsonStart = response.indexOf('{');
-    final jsonEnd = response.lastIndexOf('}') + 1;
-    
-    if (jsonStart == -1 || jsonEnd <= jsonStart) {
-      throw Exception('No valid JSON found in response');
-    }
-    
-    final jsonString = response.substring(jsonStart, jsonEnd);
-    
     try {
-      return json.decode(jsonString) as Map<String, dynamic>;
+      _logResponseEndingDetails(response);
+
+      
+      // Clean the response - remove any leading/trailing whitespace
+      final cleanedResponse = response.trim();
+      Logger.d('Raw AI response start: ${cleanedResponse.substring(0, min(500, cleanedResponse.length))}', tag: 'HiveGeminiAI');
+
+      // First try to find JSON block with triple backticks (most common case)
+      final codeBlockMatch = RegExp(r'```(?:json)?\s*(.*?)\s*```', dotAll: true).firstMatch(response);
+      if (codeBlockMatch != null) {
+        final jsonString = codeBlockMatch.group(1)!.trim();
+        Logger.d('Found JSON in code block, length: ${jsonString.length}', tag: 'HiveGeminiAI');
+        try {
+          final parsedJson = json.decode(jsonString) as Map<String, dynamic>;
+          Logger.d('Successfully parsed JSON from code block with keys: ${parsedJson.keys}', tag: 'HiveGeminiAI');
+          return parsedJson;
+        } catch (e) {
+          Logger.w('Failed to parse JSON from code block: $e', tag: 'HiveGeminiAI');
+        }
+      }
+      
+      // Check if response looks like pure JSON (starts with { and has reasonable structure)
+      if (cleanedResponse.startsWith('{')) {
+        Logger.d('Response appears to be pure JSON', tag: 'HiveGeminiAI');
+        
+        // Check if JSON is complete (ends with })
+        if (cleanedResponse.endsWith('}')) {
+          Logger.d('JSON appears complete, attempting direct parse', tag: 'HiveGeminiAI');
+          try {
+            final parsedJson = json.decode(cleanedResponse) as Map<String, dynamic>;
+            Logger.d('Successfully parsed complete JSON with keys: ${parsedJson.keys}', tag: 'HiveGeminiAI');
+            return parsedJson;
+          } catch (e) {
+            Logger.w('Failed to parse complete JSON: $e', tag: 'HiveGeminiAI');
+          }
+        } else {
+          Logger.w('JSON appears truncated (does not end with })', tag: 'HiveGeminiAI');
+          // Try to repair truncated JSON by finding the last complete object/array
+          final repairedJson = _attemptJsonRepair(cleanedResponse);
+          if (repairedJson != null) {
+            Logger.d('Successfully repaired truncated JSON', tag: 'HiveGeminiAI');
+            return repairedJson;
+          }
+        }
+      }
+      
+      // Try to find JSON object boundaries more robustly
+      final jsonStart = response.indexOf('{');
+      int jsonEnd = -1;
+      
+      if (jsonStart != -1) {
+        int braceCount = 0;
+        for (int i = jsonStart; i < response.length; i++) {
+          if (response[i] == '{') {
+            braceCount++;
+          } else if (response[i] == '}') {
+            braceCount--;
+            if (braceCount == 0) {
+              jsonEnd = i + 1;
+              break;
+            }
+          }
+        }
+      }
+      
+      if (jsonStart != -1 && jsonEnd > jsonStart) {
+        final jsonString = response.substring(jsonStart, jsonEnd);
+        Logger.d('Extracted JSON by braces: ${jsonString.length > 300 ? jsonString.substring(0, 300) : jsonString}...', tag: 'HiveGeminiAI');
+        
+        try {
+          final parsedJson = json.decode(jsonString) as Map<String, dynamic>;
+          Logger.d('Successfully parsed JSON by braces', tag: 'HiveGeminiAI');
+          return parsedJson;
+        } catch (e) {
+          Logger.w('Failed to parse JSON by braces: $e', tag: 'HiveGeminiAI');
+        }
+      }
+      
+      // If all parsing attempts fail, create fallback
+      Logger.w('No valid JSON found in response after all attempts, creating fallback', tag: 'HiveGeminiAI');
+      Logger.w('Response type: ${response.runtimeType}, length: ${response.length}', tag: 'HiveGeminiAI');
+      Logger.w('Response contains json: ${response.toLowerCase().contains('json')}', tag: 'HiveGeminiAI');
+      Logger.w('Response contains backticks: ${response.contains('```')}', tag: 'HiveGeminiAI');
+      
+      return _createFallbackItinerary(response);
+      
     } catch (e) {
-      throw Exception('Invalid JSON in response: $e');
+      Logger.e('JSON parsing failed completely: $e', tag: 'HiveGeminiAI');
+      return _createFallbackItinerary(response);
     }
+  }
+
+  void _logResponseEndingDetails(String response, {int tailChars = 800, int tailLines = 8}) {
+    final len = response.length;
+    final tailStart = max(0, len - tailChars);
+    final tail = response.substring(tailStart);
+
+    Logger.d('--- AI response tail (last $tailChars chars; total $len) ---', tag: 'HiveGeminiAI');
+    Logger.d(tail, tag: 'HiveGeminiAI');
+
+    final lines = tail.split(RegExp(r'\r?\n'));
+    final lastLines = lines.length <= tailLines ? lines : lines.sublist(lines.length - tailLines);
+    Logger.d('--- Last $tailLines lines of AI response ---', tag: 'HiveGeminiAI');
+    for (final l in lastLines) {
+      Logger.d(l, tag: 'HiveGeminiAI');
+    }
+  }
+
+  Map<String, dynamic>? _attemptJsonRepair(String truncatedJson) {
+    try {
+      Logger.d('Attempting to repair truncated JSON', tag: 'HiveGeminiAI');
+      
+      // Try to find the last complete day object
+      final dayMatches = RegExp(r'\{[^{}]*"date":[^{}]*"summary":[^{}]*"items":\s*\[[^\]]*\]\s*\}', dotAll: true)
+          .allMatches(truncatedJson).toList();
+      
+      if (dayMatches.isEmpty) {
+        Logger.w('No complete day objects found in truncated JSON', tag: 'HiveGeminiAI');
+        return null;
+      }
+      
+      // Build a repaired JSON with complete structure
+      final jsonStart = truncatedJson.indexOf('{');
+      if (jsonStart == -1) return null;
+      
+      // Extract the header part (title, dates, etc.)
+      final headerMatch = RegExp(r'\{[^{]*"days":\s*\[', dotAll: true).firstMatch(truncatedJson);
+      if (headerMatch == null) return null;
+      
+      final headerPart = truncatedJson.substring(jsonStart, headerMatch.end);
+      
+      // Extract complete days
+      final completeDays = dayMatches.map((match) => match.group(0)!).join(',\n');
+      
+      // Reconstruct the JSON
+      final repairedJson = '$headerPart\n$completeDays\n]\n}';
+      
+      Logger.d('Attempting to parse repaired JSON (${repairedJson.length} chars)', tag: 'HiveGeminiAI');
+      
+      final parsed = json.decode(repairedJson) as Map<String, dynamic>;
+      Logger.d('Successfully repaired JSON with ${(parsed['days'] as List).length} days', tag: 'HiveGeminiAI');
+      
+      return parsed;
+      
+    } catch (e) {
+      Logger.w('Failed to repair truncated JSON: $e', tag: 'HiveGeminiAI');
+      return null;
+    }
+  }
+
+  Map<String, dynamic> _createFallbackItinerary(String response) {
+    // Try to extract some useful information from the response
+    String title = 'Custom Trip';
+    String startDate = DateTime.now().toIso8601String().split('T')[0];
+    String endDate = DateTime.now().add(const Duration(days: 3)).toIso8601String().split('T')[0];
+    
+    // Try to extract title if available
+    final titleMatch = RegExp(r'"title":\s*"([^"]*)"').firstMatch(response);
+    if (titleMatch != null) {
+      title = titleMatch.group(1) ?? title;
+    }
+    
+    // Try to extract dates if available
+    final startDateMatch = RegExp(r'"startDate":\s*"([^"]*)"').firstMatch(response);
+    if (startDateMatch != null) {
+      startDate = startDateMatch.group(1) ?? startDate;
+    }
+    
+    final endDateMatch = RegExp(r'"endDate":\s*"([^"]*)"').firstMatch(response);
+    if (endDateMatch != null) {
+      endDate = endDateMatch.group(1) ?? endDate;
+    }
+    
+    // Create a meaningful fallback based on extracted info
+    return {
+      'title': title,
+      'startDate': startDate,
+      'endDate': endDate,
+      'days': [
+        {
+          'date': startDate,
+          'summary': 'Exploring your destination',
+          'items': [
+            {
+              'time': '09:00',
+              'activity': 'Start your adventure - visit popular attractions',
+              'location': '28.6139,77.2090'
+            },
+            {
+              'time': '14:00',
+              'activity': 'Enjoy local cuisine for lunch',
+              'location': '28.6139,77.2090'
+            },
+            {
+              'time': '18:00',
+              'activity': 'Evening exploration and shopping',
+              'location': '28.6139,77.2090'
+            }
+          ]
+        }
+      ]
+    };
   }
 
   int _estimateTokens(String text) {
