@@ -3,6 +3,8 @@ import 'package:bloc/bloc.dart';
 import 'package:smart_trip_planner_flutter/auth/domain/repositories/auth_repository.dart';
 import 'package:smart_trip_planner_flutter/auth/presentation/bloc/auth_event.dart';
 import 'package:smart_trip_planner_flutter/auth/presentation/bloc/auth_state.dart';
+import 'package:smart_trip_planner_flutter/auth/domain/auth_exceptions.dart';
+import 'package:smart_trip_planner_flutter/core/utils/helpers.dart';
 
 class AuthBloc extends Bloc<AuthEvents, AuthState> {
 
@@ -26,53 +28,6 @@ class AuthBloc extends Bloc<AuthEvents, AuthState> {
     }
   });
 
-  //Email Verification
-  on<AuthEventEmailVerification>((event, emit) async {
-      final user = provider.currentUser;
-      if (user == null) {
-        emit(const AuthStateLoggedOut(
-          exception: null,
-          isLoading: false,
-          intendedView: AuthView.signIn,
-        ));
-        return;
-      }
-      emit(const AuthStateNeedsVerification(isLoading: true));
-      try {
-        if (await provider.isEmailVerified()) {
-          emit(AuthStateLoggedIn(user: user, isLoading: false));
-        } else {
-          emit(const AuthStateNeedsVerification(isLoading: false));
-        }
-      } on Exception catch (e) {
-        emit(AuthStateNeedsVerification(isLoading: false, exception: e));
-      }
-  });
-  //Resend Verification Email
-  on<AuthEventResendVerificationEmail>((event, emit) async {
-      final user = provider.currentUser;
-      if (user == null) {
-        emit(const AuthStateLoggedOut(
-          exception: null,
-          isLoading: false,
-          intendedView: AuthView.signIn,
-        ));
-        return;
-      }
-      emit(const AuthStateNeedsVerification(isLoading: true));
-      try {
-        await provider.resendEmailVerification();
-        emit(const AuthStateNeedsVerification(
-          isLoading: false,
-          emailSent: true,
-        ));
-      } on Exception catch (e) {
-        emit(AuthStateNeedsVerification(
-          isLoading: false,
-          exception: e,
-        ));
-      }
-  });
   //navigate to register
   on<AuthEventNavigateToRegister>((event, emit) {
       emit(const AuthStateRegistering(
@@ -132,6 +87,7 @@ class AuthBloc extends Bloc<AuthEvents, AuthState> {
   });
   // register
   on<AuthEventRegister>((event, emit) async {
+    Logger.d('AuthBloc: Starting registration for ${event.email}', tag: 'AuthBloc');
     emit(const AuthStateRegistering(
         exception: null,
         isLoading: true,
@@ -143,8 +99,21 @@ class AuthBloc extends Bloc<AuthEvents, AuthState> {
           email: email,
           password: password,
         );
-        emit(const AuthStateNeedsVerification(isLoading: false));
+        // Get the current user from provider after registration
+        final user = provider.currentUser;
+        Logger.d('AuthBloc: Current user after registration: ${user?.email}', tag: 'AuthBloc');
+        if (user != null) {
+          Logger.d('AuthBloc: Emitting AuthStateLoggedIn after registration', tag: 'AuthBloc');
+          emit(AuthStateLoggedIn(user: user, isLoading: false));
+        } else {
+          Logger.e('AuthBloc: No current user found after registration', tag: 'AuthBloc');
+          emit(AuthStateRegistering(
+            exception: GenericAuthException(),
+            isLoading: false,
+          ));
+        }
       } on Exception catch (e) {
+        Logger.e('AuthBloc: Registration error: $e', tag: 'AuthBloc');
         emit( AuthStateRegistering(
         exception: e,
         isLoading: false,
@@ -153,9 +122,12 @@ class AuthBloc extends Bloc<AuthEvents, AuthState> {
   });
   // initialize
   on<AuthEventInitialise>((event, emit) async {
+      Logger.d('AuthBloc: Initializing', tag: 'AuthBloc');
       await provider.initialize();
       final user = provider.currentUser;
+      Logger.d('AuthBloc: Current user on init: ${user?.email}', tag: 'AuthBloc');
       if (user == null) {
+        Logger.d('AuthBloc: No user found, emitting AuthStateLoggedOut', tag: 'AuthBloc');
         emit(
           const AuthStateLoggedOut(
             exception: null,
@@ -163,9 +135,8 @@ class AuthBloc extends Bloc<AuthEvents, AuthState> {
             intendedView: AuthView.onboarding,
           ),
         );
-      } else if (!user.isEmailVerified) {
-        emit(const AuthStateNeedsVerification(isLoading: false));
       } else {
+        Logger.d('AuthBloc: User found, emitting AuthStateLoggedIn', tag: 'AuthBloc');
         emit(AuthStateLoggedIn(
           user: user,
           isLoading: false,
@@ -181,11 +152,21 @@ class AuthBloc extends Bloc<AuthEvents, AuthState> {
       ));
 
       try {
-        final user = await provider.signInWithGoogle();
-        emit(AuthStateLoggedIn(
-          user: user,
-          isLoading: false,
-        ));
+        await provider.signInWithGoogle();
+        // Get the current user from provider after Google sign in
+        final user = provider.currentUser;
+        if (user != null) {
+          emit(AuthStateLoggedIn(
+            user: user,
+            isLoading: false,
+          ));
+        } else {
+          emit(AuthStateLoggedOut(
+            exception: GenericAuthException(),
+            isLoading: false,
+            intendedView: AuthView.signIn,
+          ));
+        }
       } on Exception catch (e) {
         emit(AuthStateLoggedOut(
           exception: e,
@@ -197,6 +178,7 @@ class AuthBloc extends Bloc<AuthEvents, AuthState> {
     
   // log in
   on<AuthEventLogIn>((event, emit) async {
+      Logger.d('AuthBloc: Starting login for ${event.email}', tag: 'AuthBloc');
       emit(const AuthStateLoggedOut(
         exception: null,
         isLoading: true,
@@ -204,20 +186,30 @@ class AuthBloc extends Bloc<AuthEvents, AuthState> {
       ));
       
       try {
-        final user = await provider.login(
+        await provider.login(
           email: event.email,
           password: event.password,
         );
 
-        if (!user.isEmailVerified) {
-          emit(const AuthStateNeedsVerification(isLoading: false));
-        } else {
+        // Get the current user from provider after login
+        final user = provider.currentUser;
+        Logger.d('AuthBloc: Current user after login: ${user?.email}', tag: 'AuthBloc');
+        if (user != null) {
+          Logger.d('AuthBloc: Emitting AuthStateLoggedIn after login', tag: 'AuthBloc');
           emit(AuthStateLoggedIn(
             user: user,
             isLoading: false,
           ));
+        } else {
+          Logger.e('AuthBloc: No current user found after login', tag: 'AuthBloc');
+          emit(AuthStateLoggedOut(
+            exception: GenericAuthException(),
+            isLoading: false,
+            intendedView: AuthView.signIn,
+          ));
         }
       } on Exception catch (e) {
+        Logger.e('AuthBloc: Login error: $e', tag: 'AuthBloc');
         emit(AuthStateLoggedOut(
           exception: e,
           isLoading: false,

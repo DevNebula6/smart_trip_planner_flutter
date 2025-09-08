@@ -6,8 +6,10 @@ import 'package:smart_trip_planner_flutter/core/storage/hive_storage_service.dar
 import 'package:smart_trip_planner_flutter/auth/data/datasources/local/mock_auth_datasource.dart';
 import 'package:smart_trip_planner_flutter/auth/presentation/bloc/auth_bloc.dart';
 import 'package:smart_trip_planner_flutter/shared/navigation/app_router.dart';
+import 'package:smart_trip_planner_flutter/shared/auth/auth_wrapper.dart';
 import 'package:smart_trip_planner_flutter/core/theme/app_theme.dart';
 import 'package:smart_trip_planner_flutter/trip_planning_chat/presentation/blocs/home_bloc.dart';
+import 'package:smart_trip_planner_flutter/trip_planning_chat/presentation/blocs/chat_bloc.dart';
 import 'package:smart_trip_planner_flutter/auth/presentation/bloc/auth_event.dart';
 import 'package:smart_trip_planner_flutter/core/utils/helpers.dart';
 
@@ -48,12 +50,18 @@ class MainApp extends StatelessWidget {
         BlocProvider<HomeBloc>(
           create: (context) => HomeBloc(aiService: aiService),
         ),
+        BlocProvider<ChatBloc>(
+          create: (context) => ChatBloc(
+            aiService: aiService,
+            storageService: HiveStorageService.instance,
+          ),
+        ),
       ],
       child: MaterialApp(
         title: 'Smart Trip Planner',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        initialRoute: AppRoutes.onboarding, // Start with onboarding and let auth bloc handle routing
+        home: const AuthWrapper(), // Use AuthWrapper as the main entry point
         onGenerateRoute: AppRouter.generateRoute,
       ),
     );

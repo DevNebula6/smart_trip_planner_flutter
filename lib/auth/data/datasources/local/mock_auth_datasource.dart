@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:uuid/uuid.dart';
+import 'package:collection/collection.dart';
 import 'package:smart_trip_planner_flutter/auth/data/models/custom_auth_user.dart';
 import 'package:smart_trip_planner_flutter/auth/domain/auth_exceptions.dart';
 import 'package:smart_trip_planner_flutter/auth/domain/repositories/auth_repository.dart';
@@ -22,6 +23,9 @@ class MockAuthDatasource implements AuthRepository {
   Future<void> initialize() async {
     Logger.d('Initializing Mock Auth Datasource', tag: 'MockAuth');
     await _storage.initialize();
+    
+    // Load current user into cache
+    _currentUserCache = await _getCurrentUser();
   }
 
   @override
@@ -34,6 +38,8 @@ class MockAuthDatasource implements AuthRepository {
 
       // Check if user already exists
       final existingUsers = await _getRegisteredUsers();
+      Logger.d('Found ${existingUsers.length} existing users', tag: 'MockAuth');
+      
       if (existingUsers.any((user) => user.email == email)) {
         throw EmailAlreadyInUseAuthException();
       }
@@ -42,17 +48,21 @@ class MockAuthDatasource implements AuthRepository {
       final user = CustomAuthUser(
         id: _uuid.v4(),
         email: email,
-        isEmailVerified: false,
+        isEmailVerified: true, // Auto-verify for mock auth
       );
 
       // Store user
       existingUsers.add(user);
+      Logger.d('Storing ${existingUsers.length} users total', tag: 'MockAuth');
       await _storage.saveMetadata(_usersKey, {
         'users': existingUsers.map((u) => u.toJson()).toList(),
       });
 
       // Set as current user
+      Logger.d('Setting current user: ${user.email}', tag: 'MockAuth');
       await _storage.saveMetadata(_currentUserKey, user.toJson());
+      _currentUserCache = user; // Update cache
+      Logger.d('Current user cache updated: ${_currentUserCache?.email}', tag: 'MockAuth');
       
       Logger.d('User created successfully', tag: 'MockAuth');
       return user;
@@ -79,6 +89,7 @@ class MockAuthDatasource implements AuthRepository {
 
       // Set as current user
       await _storage.saveMetadata(_currentUserKey, user.toJson());
+      _currentUserCache = user; // Update cache
       
       Logger.d('User logged in successfully', tag: 'MockAuth');
       return user;
@@ -94,6 +105,7 @@ class MockAuthDatasource implements AuthRepository {
     try {
       Logger.d('Logging out current user', tag: 'MockAuth');
       await _storage.saveMetadata(_currentUserKey, {});
+      _currentUserCache = null; // Clear cache
     } catch (e) {
       Logger.e('Failed to log out: $e', tag: 'MockAuth');
       throw GenericAuthException();
@@ -120,21 +132,63 @@ class MockAuthDatasource implements AuthRepository {
 
   @override
   Future<CustomAuthUser> signInWithGoogle() async {
-    throw UnimplementedError('Google Sign In not implemented in mock');
+    try {
+      Logger.d('Mock: Signing in with Google', tag: 'MockAuth');
+      
+      // Create a mock Google user
+      const mockGoogleEmail = 'user@gmail.com';
+      
+      // Check if user already exists
+      final existingUsers = await _getRegisteredUsers();
+      final existingUser = existingUsers.where((user) => user.email == mockGoogleEmail).firstOrNull;
+      
+      CustomAuthUser user;
+      if (existingUser != null) {
+        user = existingUser;
+      } else {
+        // Create new Google user
+        user = CustomAuthUser(
+          id: _uuid.v4(),
+          email: mockGoogleEmail,
+          isEmailVerified: true, // Google accounts are pre-verified
+          providerType: 'google',
+          metadata: {'full_name': 'Google User'},
+        );
+        
+        // Store user
+        existingUsers.add(user);
+        await _storage.saveMetadata(_usersKey, {
+          'users': existingUsers.map((u) => u.toJson()).toList(),
+        });
+      }
+
+      // Set as current user
+      await _storage.saveMetadata(_currentUserKey, user.toJson());
+      _currentUserCache = user; // Update cache
+      
+      Logger.d('Google user signed in successfully', tag: 'MockAuth');
+      return user;
+    } catch (e) {
+      Logger.e('Failed to sign in with Google: $e', tag: 'MockAuth');
+      throw GenericAuthException();
+    }
   }
 
   @override
   CustomAuthUser? get currentUser {
-    // This is synchronous, so we return null and let the stream handle it
-    return null;
+    // For mock, we'll store the current user in memory for synchronous access
+    Logger.d('Getting current user from cache: ${_currentUserCache?.email}', tag: 'MockAuth');
+    return _currentUserCache;
   }
+  
+  CustomAuthUser? _currentUserCache;
 
   Future<CustomAuthUser?> _getCurrentUser() async {
     try {
       final userData = await _storage.getMetadata(_currentUserKey);
       if (userData == null || userData.isEmpty) return null;
       
-      return CustomAuthUser.fromJson(userData);
+      return CustomAuthUser.fromJson(Map<String, dynamic>.from(userData as Map));
     } catch (e) {
       Logger.e('Failed to get current user: $e', tag: 'MockAuth');
       return null;
@@ -147,7 +201,7 @@ class MockAuthDatasource implements AuthRepository {
       if (usersData == null || usersData['users'] == null) return [];
       
       return (usersData['users'] as List)
-          .map((userData) => CustomAuthUser.fromJson(userData))
+          .map((userData) => CustomAuthUser.fromJson(Map<String, dynamic>.from(userData as Map)))
           .toList();
     } catch (e) {
       Logger.e('Failed to get registered users: $e', tag: 'MockAuth');

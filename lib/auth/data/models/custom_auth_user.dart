@@ -53,9 +53,17 @@ class CustomAuthUser {
       email: json['email'] as String,
       avatarUrl: json['avatar_url'] as String?,
       providerType: json['provider_type'] as String?,
-      metadata: json['metadata'] as Map<String, dynamic>? ?? {},
+      metadata: _safeMapConversion(json['metadata']),
       isEmailVerified: json['is_email_verified'] as bool? ?? false,
     );
+  }
+
+  /// Safely convert dynamic map to Map<String, dynamic>
+  static Map<String, dynamic> _safeMapConversion(dynamic value) {
+    if (value == null) return {};
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+    return {};
   }
 
   /// Convert to JSON (for local storage)
