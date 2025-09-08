@@ -912,6 +912,7 @@ class _ChatPageState extends State<ChatPage> {
                   padding: const EdgeInsets.symmetric(horizontal: AppDimensions.paddingL),
                   child: ItineraryCard(
                     itinerary: itinerary,
+                    enableStreaming: false, // Explicitly disable streaming for modal
                     onOpenInMaps: () {
                       // TODO: Implement maps integration
                       Navigator.pop(context);

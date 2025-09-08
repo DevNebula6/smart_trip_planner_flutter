@@ -432,6 +432,39 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     } catch (error) {
       Logger.e('Failed to send message: $error', tag: 'ChatBloc');
       
+      // Handle follow-up questions specially
+      if (error.toString().contains('FollowUpQuestionException')) {
+        // Extract the question from the exception
+        final questionMatch = RegExp(r'FollowUpQuestionException: (.+)').firstMatch(error.toString());
+        final question = questionMatch?.group(1) ?? error.toString();
+        
+        Logger.d('AI asked follow-up question: $question', tag: 'ChatBloc');
+        
+        // Add the follow-up question as an AI message
+        final followUpMessage = ChatMessageModel(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          itineraryId: _currentSession!.sessionId,
+          content: question,
+          role: 'assistant',
+          timestamp: DateTime.now(),
+        );
+        
+        _messages.add(followUpMessage);
+        
+        // Emit state with the follow-up question
+        emit(ChatMessageReceived(
+          session: _currentSession!,
+          messages: List.from(_messages),
+          currentItinerary: _currentItinerary, // Keep existing itinerary
+        ));
+        
+        // Save session with the follow-up conversation
+        Logger.d('Saving session after follow-up question', tag: 'ChatBloc');
+        await _updateSessionInStorage();
+        
+        return; // Don't emit error state
+      }
+      
       // Remove the failed user message
       if (_messages.isNotEmpty && _messages.last.role == 'user') {
         _messages.removeLast();

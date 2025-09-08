@@ -8,7 +8,6 @@ import '../../../auth/presentation/bloc/auth_state.dart';
 import '../blocs/home_bloc.dart';
 import '../widgets/trip_card.dart';
 import '../widgets/custom_text_field.dart';
-import '../../../core/utils/test_data_helper.dart';
 import '../../../core/utils/helpers.dart';
 
 class HomePage extends StatefulWidget {
@@ -120,8 +119,6 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
-      // Debug floating action button (only in debug mode)
-      floatingActionButton: _buildDebugFAB(),
     );
   }
 
@@ -687,92 +684,6 @@ class _HomePageState extends State<HomePage> {
               child: const Text('Delete'),
             ),
           ],
-        );
-      },
-    );
-  }
-  
-  /// Debug floating action button - only visible in debug mode
-  Widget? _buildDebugFAB() {
-    bool debugMode = false;
-    assert(debugMode = true); // This only executes in debug mode
-    
-    if (!debugMode) return null;
-    
-    return FloatingActionButton.extended(
-      onPressed: () => _showDebugMenu(),
-      backgroundColor: AppColors.primaryGreen,
-      foregroundColor: AppColors.white,
-      icon: const Icon(Icons.bug_report),
-      label: const Text('Test'),
-    );
-  }
-  
-  void _showDebugMenu() {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return Container(
-          padding: const EdgeInsets.all(AppDimensions.paddingL),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Debug Menu',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: AppDimensions.paddingL),
-              ListTile(
-                leading: const Icon(Icons.add),
-                title: const Text('Create Sample Trips'),
-                subtitle: const Text('Add test data for home page'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  
-                  // Get current user ID
-                  String userId = 'anonymous';
-                  final authState = context.read<AuthBloc>().state;
-                  if (authState is AuthStateLoggedIn) {
-                    userId = authState.user.id;
-                  }
-                  
-                  await TestDataHelper.createSampleSessions(userId: userId);
-                  Logger.d('Sample sessions created for user: $userId', tag: 'Debug');
-                  _loadSavedTrips(); // Refresh the list
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete),
-                title: const Text('Clear All Trips'),
-                subtitle: const Text('Remove all saved sessions'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  
-                  // Get current user ID
-                  String userId = 'anonymous';
-                  final authState = context.read<AuthBloc>().state;
-                  if (authState is AuthStateLoggedIn) {
-                    userId = authState.user.id;
-                  }
-                  
-                  await TestDataHelper.clearAllSessions(userId: userId);
-                  Logger.d('All sessions cleared for user: $userId', tag: 'Debug');
-                  _loadSavedTrips(); // Refresh the list
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.refresh),
-                title: const Text('Refresh Trips'),
-                subtitle: const Text('Reload trips from storage'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _loadSavedTrips();
-                },
-              ),
-            ],
-          ),
         );
       },
     );

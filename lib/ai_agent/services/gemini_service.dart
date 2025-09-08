@@ -10,7 +10,21 @@ import 'package:smart_trip_planner_flutter/core/storage/hive_storage_service.dar
 import 'package:smart_trip_planner_flutter/core/storage/hive_models.dart';
 import 'package:smart_trip_planner_flutter/ai_agent/models/trip_session_model.dart';
 import 'package:smart_trip_planner_flutter/trip_planning_chat/data/models/itinerary_models.dart';
+import 'package:smart_trip_planner_flutter/ai_agent/services/web_search_service.dart';
+import 'package:smart_trip_planner_flutter/core/services/token_tracking_service.dart';
 import '../../core/utils/helpers.dart';
+
+/// **Follow-Up Question Exception**
+/// 
+/// Thrown when the AI asks a follow-up question instead of returning an itinerary
+class FollowUpQuestionException implements Exception {
+  final String question;
+  
+  const FollowUpQuestionException(this.question);
+  
+  @override
+  String toString() => 'FollowUpQuestionException: $question';
+}
 
 
 /// **Gemini Service**
@@ -18,6 +32,9 @@ class GeminiAIService implements AIAgentService {
   final GenerativeModel _baseModel;
   final TokenUsageStats _tokenUsage = TokenUsageStats();
   final HiveStorageService _storage = HiveStorageService.instance;
+  
+  // Web search tool for real-time information
+  final WebSearchTool? _webSearchTool;
   
   // Session management (AI Companion patterns)
   final Map<String, ChatSession> _geminiSessions = {};
@@ -28,11 +45,24 @@ class GeminiAIService implements AIAgentService {
   final Set<String> _pendingSaves = {};
   static const Duration _saveDebounceDelay = Duration(milliseconds: 300); // Faster debounce with Hive
 
-  GeminiAIService({required String apiKey})
-      : _baseModel = GenerativeModel(
+  GeminiAIService({
+    required String apiKey,
+    String? googleSearchApiKey,
+    String? googleSearchEngineId,
+    String? bingSearchApiKey,
+  }) : _webSearchTool = _createWebSearchTool(
+          googleSearchApiKey: googleSearchApiKey,
+          googleSearchEngineId: googleSearchEngineId,
+        ),
+        _baseModel = GenerativeModel(
           model: 'gemini-2.5-flash',
           apiKey: apiKey,
-          systemInstruction: Content.text(_buildSystemPromptStatic()),
+          systemInstruction: Content.text(_buildSystemPromptWithWebSearch()),
+          tools: _createTools(
+            googleSearchApiKey: googleSearchApiKey,
+            googleSearchEngineId: googleSearchEngineId,
+            bingSearchApiKey: bingSearchApiKey,
+          ),
           generationConfig: GenerationConfig(
             temperature: 0.7,
             topK: 40,
@@ -41,6 +71,97 @@ class GeminiAIService implements AIAgentService {
           ),
         ) {
     _initStorage();
+    
+    // Log web search tool configuration
+    final hasGoogleSearch = googleSearchApiKey?.isNotEmpty == true && 
+                           googleSearchEngineId?.isNotEmpty == true;
+    final hasBingSearch = bingSearchApiKey?.isNotEmpty == true;
+    
+    if (hasGoogleSearch) {
+      Logger.d('Web search configured with Google Custom Search API', tag: 'GeminiAI');
+    } else if (hasBingSearch) {
+      Logger.d('Web search configured with Bing Web Search API', tag: 'GeminiAI');
+    } else {
+      Logger.d('Web search not configured - no API keys provided', tag: 'GeminiAI');
+    }
+  }
+
+  /// Create web search tool if API keys are available
+  static WebSearchTool? _createWebSearchTool({
+    String? googleSearchApiKey,
+    String? googleSearchEngineId,
+    String? bingSearchApiKey,
+  }) {
+    // Prefer Google Custom Search if both keys are available
+    if (googleSearchApiKey != null && 
+        googleSearchApiKey.isNotEmpty && 
+        googleSearchEngineId != null && 
+        googleSearchEngineId.isNotEmpty) {
+      Logger.d('Initializing Google Custom Search tool', tag: 'GeminiAI');
+      return WebSearchTool.google(
+        apiKey: googleSearchApiKey,
+        searchEngineId: googleSearchEngineId,
+      );
+    }
+    
+    // Fallback to Bing if available
+    if (bingSearchApiKey != null && bingSearchApiKey.isNotEmpty) {
+      Logger.d('Initializing Bing Web Search tool', tag: 'GeminiAI');
+      return WebSearchTool.bing(apiKey: bingSearchApiKey);
+    }
+    
+    Logger.d('No web search APIs configured - web search disabled', tag: 'GeminiAI');
+    return null;
+  }
+
+  /// Create tools list for Gemini model
+  static List<Tool>? _createTools({
+    String? googleSearchApiKey,
+    String? googleSearchEngineId,
+    String? bingSearchApiKey,
+  }) {
+    final webSearchTool = _createWebSearchTool(
+      googleSearchApiKey: googleSearchApiKey,
+      googleSearchEngineId: googleSearchEngineId,
+      bingSearchApiKey: bingSearchApiKey,
+    );
+    
+    if (webSearchTool == null) {
+      Logger.d('No web search tools available - tool-calling disabled', tag: 'GeminiAI');
+      return null;
+    }
+    
+    try {
+      // Create the web search function declaration
+      final functionDeclaration = FunctionDeclaration(
+        'webSearch',
+        'Search the web for real-time information about travel destinations, restaurants, hotels, events, attractions, and transportation. Use this for current pricing, hours, reviews, and availability.',
+        Schema(
+          SchemaType.object,
+          properties: {
+            'query': Schema(
+              SchemaType.string,
+              description: 'The search query for travel-related information. Be specific and include location, dates, or preferences.',
+            ),
+            'maxResults': Schema(
+              SchemaType.integer,
+              description: 'Maximum number of search results to return (default: 5, max: 10)',
+            ),
+          },
+          requiredProperties: ['query'],
+        ),
+      );
+      
+      Logger.d('Created web search function declaration for tool-calling', tag: 'GeminiAI');
+      
+      return [
+        Tool(functionDeclarations: [functionDeclaration]),
+      ];
+      
+    } catch (e) {
+      Logger.e('Failed to create function declaration: $e', tag: 'GeminiAI');
+      return null;
+    }
   }
 
   Future<void> _initStorage() async {
@@ -89,10 +210,46 @@ IMPORTANT: Create a complete trip plan based on the user's request and preferenc
 
       // Get Gemini chat session
       final chatSession = await _getOrCreateGeminiSession(hiveSession);
-      final response = await chatSession.sendMessage(Content.text(fullPrompt))
+      
+      // Send message and handle potential function calls
+      var response = await chatSession.sendMessage(Content.text(fullPrompt))
           .timeout(const Duration(seconds: 45), onTimeout: () { // Increased timeout
         throw TimeoutException('AI response timed out');
       });
+
+      // Handle function calls if present
+      if (response.functionCalls.isNotEmpty) {
+        Logger.d('Gemini requested ${response.functionCalls.length} function call(s)', tag: 'WebSearchTool');
+        
+        final functionResponses = <FunctionResponse>[];
+        
+        for (final functionCall in response.functionCalls) {
+          if (functionCall.name == 'webSearch' && _webSearchTool != null) {
+            Logger.d('Processing webSearch function call: ${functionCall.args}', tag: 'WebSearchTool');
+            
+            try {
+              final searchResult = await _webSearchTool.handleFunctionCall(functionCall.args);
+              functionResponses.add(FunctionResponse(functionCall.name, searchResult));
+              Logger.d('Web search completed successfully', tag: 'WebSearchTool');
+            } catch (e) {
+              Logger.e('Web search failed: $e', tag: 'WebSearchTool');
+              functionResponses.add(FunctionResponse(
+                functionCall.name, 
+                {'error': 'Search failed: $e', 'results': <Map<String, dynamic>>[]}
+              ));
+            }
+          }
+        }
+        
+        // Send function responses back to Gemini
+        if (functionResponses.isNotEmpty) {
+          Logger.d('Sending ${functionResponses.length} function response(s) back to Gemini', tag: 'WebSearchTool');
+          response = await chatSession.sendMessage(Content.functionResponses(functionResponses))
+              .timeout(const Duration(seconds: 30), onTimeout: () {
+            throw TimeoutException('Function response timed out');
+          });
+        }
+      }
 
       // Debug the actual response
       final responseText = response.text ?? '';
@@ -140,9 +297,24 @@ IMPORTANT: Create a complete trip plan based on the user's request and preferenc
       );
 
       // Track usage
+      final promptTokens = _estimateTokens(fullPrompt);
+      final completionTokens = _estimateTokens(response.text ?? '');
+      
       _tokenUsage.addUsage(
-        promptTokens: _estimateTokens(fullPrompt),
-        completionTokens: _estimateTokens(response.text ?? ''),
+        promptTokens: promptTokens,
+        completionTokens: completionTokens,
+      );
+
+      // Track globally for cost awareness (Gemini 2.5 Flash pricing)
+      const inputCostPer1M = 0.30;
+      const outputCostPer1M = 2.50;
+      final cost = (promptTokens / 1000000) * inputCostPer1M + 
+                   (completionTokens / 1000000) * outputCostPer1M;
+      
+      TokenTrackingService().addUsage(
+        promptTokens: promptTokens,
+        completionTokens: completionTokens,
+        cost: cost,
       );
 
       // Save session to Hive (immediately for important updates)
@@ -201,32 +373,106 @@ IMPORTANT: Create a complete trip plan based on the user's request and preferenc
 
       // Use existing Gemini session for efficiency
       final chatSession = await _getOrCreateGeminiSession(hiveSession);
-      final response = await chatSession.sendMessage(Content.text(userPrompt))
+      
+      // Send message and handle potential function calls
+      var response = await chatSession.sendMessage(Content.text(userPrompt))
           .timeout(const Duration(seconds: 60), onTimeout: () {
         throw TimeoutException('AI response timed out');
       });
 
+      // Handle function calls if present
+      if (response.functionCalls.isNotEmpty) {
+        Logger.d('Gemini requested ${response.functionCalls.length} function call(s) during refinement', tag: 'WebSearchTool');
+        
+        final functionResponses = <FunctionResponse>[];
+        
+        for (final functionCall in response.functionCalls) {
+          if (functionCall.name == 'webSearch' && _webSearchTool != null) {
+            Logger.d('Processing webSearch function call: ${functionCall.args}', tag: 'WebSearchTool');
+            
+            try {
+              final searchResult = await _webSearchTool.handleFunctionCall(functionCall.args);
+              functionResponses.add(FunctionResponse(functionCall.name, searchResult));
+              Logger.d('Web search completed successfully during refinement', tag: 'WebSearchTool');
+            } catch (e) {
+              Logger.e('Web search failed during refinement: $e', tag: 'WebSearchTool');
+              functionResponses.add(FunctionResponse(
+                functionCall.name, 
+                {'error': 'Search failed: $e', 'results': <Map<String, dynamic>>[]}
+              ));
+            }
+          }
+        }
+        
+        // Send function responses back to Gemini
+        if (functionResponses.isNotEmpty) {
+          Logger.d('Sending ${functionResponses.length} function response(s) back to Gemini during refinement', tag: 'WebSearchTool');
+          response = await chatSession.sendMessage(Content.functionResponses(functionResponses))
+              .timeout(const Duration(seconds: 30), onTimeout: () {
+            throw TimeoutException('Function response timed out');
+          });
+        }
+      }
+
+      final responseText = response.text ?? '';
+      
+      // Check if this is a follow-up question
+      if (responseText.startsWith('FOLLOWUP:')) {
+        final followUpQuestion = responseText.substring(9).trim();
+        Logger.d('AI asked follow-up question: $followUpQuestion', tag: 'HiveGeminiAI');
+        
+        // Save the conversation but don't try to parse as itinerary
+        final tokensUsed = _estimateTokens(userPrompt) + _estimateTokens(responseText);
+        hiveSession.updateConversation(
+          userMessage: Content.text(userPrompt),
+          aiResponse: Content.model([TextPart(responseText)]),
+          tokensUsed: tokensUsed,
+          tokensSavedFromReuse: 0,
+        );
+        
+        // Save session
+        _debouncedSaveSession(hiveSession);
+        
+        // Throw a special exception that the chat system can handle
+        throw FollowUpQuestionException(followUpQuestion);
+      }
+
       // Calculate savings
-      final tokensUsed = _estimateTokens(userPrompt) + _estimateTokens(response.text ?? '');
+      final tokensUsed = _estimateTokens(userPrompt) + _estimateTokens(responseText);
       final tokensSaved = _calculateTokensSaved(hiveSession);
 
       // Parse refined itinerary
-      final refinedJson = _extractItineraryFromResponse(response.text ?? '');
+      final refinedJson = _extractItineraryFromResponse(responseText);
       final refinedItinerary = ItineraryModel.fromJson(refinedJson);
 
       // Update session
       hiveSession.updateConversation(
         userMessage: Content.text(userPrompt),
-        aiResponse: Content.model([TextPart(response.text ?? '')]),
+        aiResponse: Content.model([TextPart(responseText)]),
         tokensUsed: tokensUsed,
         tokensSavedFromReuse: tokensSaved,
       );
 
       // Track usage with savings
+      final promptTokens = _estimateTokens(userPrompt);
+      final completionTokens = _estimateTokens(responseText);
+      
       _tokenUsage.addUsage(
-        promptTokens: _estimateTokens(userPrompt),
-        completionTokens: _estimateTokens(response.text ?? ''),
+        promptTokens: promptTokens,
+        completionTokens: completionTokens,
         tokensSaved: tokensSaved,
+      );
+
+      // Track globally for cost awareness (Gemini 2.5 Flash pricing)
+      const inputCostPer1M = 0.30;
+      const outputCostPer1M = 2.50;
+      final cost = (promptTokens / 1000000) * inputCostPer1M + 
+                   (completionTokens / 1000000) * outputCostPer1M;
+      
+      TokenTrackingService().addUsage(
+        promptTokens: promptTokens,
+        completionTokens: completionTokens,
+        cost: cost,
       );
 
       // Save session to Hive
@@ -236,6 +482,9 @@ IMPORTANT: Create a complete trip plan based on the user's request and preferenc
       return refinedItinerary;
       
     } catch (e) {
+      if (e is FollowUpQuestionException) {
+        rethrow; // Let the chat system handle this
+      }
       Logger.e('Failed to refine itinerary: $e', tag: 'HiveGeminiAI');
       throw AIAgentException('Failed to refine itinerary: $e');
     }
@@ -593,9 +842,33 @@ User Request: $userPrompt
     );
   }
 
-  static String _buildSystemPromptStatic() {
+  static String _buildSystemPromptWithWebSearch() {
     return '''
-You are an expert travel planner AI. Generate detailed day-by-day itineraries in JSON format.
+You are an expert travel planner AI with access to real-time web search capabilities. Generate detailed day-by-day itineraries in JSON format.
+
+IMPORTANT: Use the webSearch function to get real-time information about:
+- Current restaurant prices, hours, and reviews
+- Hotel availability and rates near attractions  
+- Recent events and festivals during travel dates
+- Transportation schedules and options
+- Weather conditions and seasonal recommendations
+- Attraction opening hours and ticket prices
+
+SEARCH STRATEGY:
+- For each major destination, search for "restaurants in [location]" or "best restaurants [location]"
+- For accommodations, search "hotels near [attraction name]" or "best hotels [location]"
+- For activities, search "[activity] in [location] [year]" to get current information
+- Always include the year (2025) in searches for current information
+
+RESPONSE TYPES:
+1. ITINERARY RESPONSE: When you have information to create/modify an itinerary, respond with ONLY the JSON object.
+2. FOLLOW-UP QUESTION: When you need more information from the user, start your response with "FOLLOWUP: " followed by your question.
+
+EXAMPLES:
+- User: "Change dates" → Response: "FOLLOWUP: What are the new start and end dates for your trip?"
+- User: "Make it cheaper" → Response: "FOLLOWUP: What's your preferred budget range per day?"
+- User: "Add more restaurants" → Response: "FOLLOWUP: What type of cuisine are you interested in?"
+- User: "Plan a trip to Paris for 3 days" → Response: {JSON itinerary}
 
 CRITICAL CONSTRAINTS:
 - Keep response under 3600 tokens (roughly 2800 words)
@@ -616,7 +889,7 @@ EXACT JSON schema required:
       "items": [
         {
           "time": "HH:MM",
-          "activity": "Brief activity description (max 15 words)", 
+          "activity": "Brief activity description with current info from web search", 
           "location": "lat,lng"
         }
       ]
@@ -627,10 +900,18 @@ EXACT JSON schema required:
 ESSENTIAL RULES:
 - 24-hour time format only
 - Real coordinates for location (lat,lng format)
-- NO additional text, prose, or code blocks
+- For follow-up questions: Start with "FOLLOWUP: " and ask concise, specific questions
+- For itineraries: NO additional text, prose, or code blocks - ONLY the JSON object
 - Ensure JSON is complete and properly closed
+- Use web search results to enhance activity descriptions with current pricing, hours, and reviews
 
-Respond with ONLY the JSON object, ensuring it's complete and valid.
+EXAMPLE WEB SEARCHES:
+- "restaurants in Kyoto 2025"
+- "best hotels near Fushimi Inari Shrine"
+- "Kinkaku-ji Temple opening hours tickets 2025"
+- "Tokyo events March 2025"
+
+Remember: If you need clarification, use "FOLLOWUP: " prefix. If you can create/modify the itinerary, respond with ONLY the JSON object.
 ''';
   }
 
@@ -870,13 +1151,20 @@ class TokenUsageStats {
   int get tokensSaved => _tokensSaved;
   
   double get estimatedCostUSD {
-    const costPer1kTokens = 0.03;
-    return (totalTokens / 1000 * costPer1kTokens);
+    // Gemini 2.5 Flash pricing: $0.30/1M input tokens, $2.50/1M output tokens
+    const inputCostPer1MTokens = 0.30;
+    const outputCostPer1MTokens = 2.50;
+    
+    final inputCost = (_totalPromptTokens / 1000000) * inputCostPer1MTokens;
+    final outputCost = (_totalCompletionTokens / 1000000) * outputCostPer1MTokens;
+    
+    return inputCost + outputCost;
   }
 
   double get estimatedSavingsUSD {
-    const costPer1kTokens = 0.03;
-    return (_tokensSaved / 1000 * costPer1kTokens);
+    // Use average token cost for savings calculation
+    const avgCostPer1MTokens = 1.40; // Average of input and output costs
+    return (_tokensSaved / 1000000 * avgCostPer1MTokens);
   }
 
   void reset() {
@@ -894,11 +1182,21 @@ class TokenUsageStats {
 
 /// **Service Factory**
 class AIAgentServiceFactory {
-  static AIAgentService create({required String geminiApiKey}) {
+  static AIAgentService create({
+    required String geminiApiKey,
+    String? googleSearchApiKey,
+    String? googleSearchEngineId,
+    String? bingSearchApiKey,
+  }) {
     if (geminiApiKey.isEmpty) {
       return HiveMockAIAgentService();
     }
-    return GeminiAIService(apiKey: geminiApiKey);
+    return GeminiAIService(
+      apiKey: geminiApiKey,
+      googleSearchApiKey: googleSearchApiKey,
+      googleSearchEngineId: googleSearchEngineId,
+      bingSearchApiKey: bingSearchApiKey,
+    );
   }
 }
 

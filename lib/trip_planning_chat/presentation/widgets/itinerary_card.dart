@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_styles.dart';
 import '../../../trip_planning_chat/data/models/itinerary_models.dart';
 
@@ -252,13 +253,23 @@ class _ItineraryCardState extends State<ItineraryCard> {
     // Calculate what activities to show based on current animation step
     List<Widget> activityWidgets = [];
     
-    for (int i = 0; i < day.items.length; i++) {
-      final activityChunkIndex = chunkIndex + 1 + i; // Day title + activity index
-      
-      if (_currentAnimationStep >= activityChunkIndex) {
-        final isAnimating = _currentAnimationStep == activityChunkIndex;
+    if (animate) {
+      // Streaming mode - show activities based on animation progress
+      for (int i = 0; i < day.items.length; i++) {
+        final activityChunkIndex = chunkIndex + 1 + i; // Day title + activity index
+        
+        if (_currentAnimationStep >= activityChunkIndex) {
+          final isAnimating = _currentAnimationStep == activityChunkIndex;
+          activityWidgets.add(
+            _buildActivityItem(context, day.items[i], isAnimating)
+          );
+        }
+      }
+    } else {
+      // Static mode - show all activities at once
+      for (int i = 0; i < day.items.length; i++) {
         activityWidgets.add(
-          _buildActivityItem(context, day.items[i], isAnimating)
+          _buildActivityItem(context, day.items[i], false)
         );
       }
     }
@@ -266,34 +277,47 @@ class _ItineraryCardState extends State<ItineraryCard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Day header
+        // Day header with map button
         Padding(
           padding: const EdgeInsets.only(
             top: AppDimensions.paddingL,
             bottom: AppDimensions.paddingM,
           ),
-          child: animate
-              ? AnimatedTextKit(
-                  animatedTexts: [
-                    TyperAnimatedText(
-                      'Day $dayNumber: ${day.summary}',
-                      textStyle: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primaryGreen,
+          child: Row(
+            children: [
+              // Day title
+              Expanded(
+                child: animate
+                    ? AnimatedTextKit(
+                        animatedTexts: [
+                          TyperAnimatedText(
+                            'Day $dayNumber: ${day.summary}',
+                            textStyle: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primaryGreen,
+                            ),
+                            speed: const Duration(milliseconds: 25),
+                          ),
+                        ],
+                        totalRepeatCount: 1,
+                        onFinished: _onAnimationComplete,
+                      )
+                    : Text(
+                        'Day $dayNumber: ${day.summary}',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primaryGreen,
+                        ),
                       ),
-                      speed: const Duration(milliseconds: 25),
-                    ),
-                  ],
-                  totalRepeatCount: 1,
-                  onFinished: _onAnimationComplete,
-                )
-              : Text(
-                  'Day $dayNumber: ${day.summary}',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primaryGreen,
-                  ),
-                ),
+              ),
+              
+              // Map button - only show if not animating or animation is complete for this section
+              if (!animate || _currentAnimationStep > chunkIndex) ...[
+                const SizedBox(width: AppDimensions.paddingS),
+                _buildMapButton(day, dayNumber),
+              ],
+            ],
+          ),
         ),
         
         // Activities for this day
@@ -464,6 +488,190 @@ class _ItineraryCardState extends State<ItineraryCard> {
     );
   }
   
+  /// Build map button for a day
+  Widget _buildMapButton(DayPlanModel day, int dayNumber) {
+    final locations = _extractValidLocations(day);
+    final locationCount = locations.length;
+    
+    return GestureDetector(
+      onTap: locationCount > 0 ? () => _openDayInGoogleMaps(day, dayNumber) : null,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: locationCount > 0 
+              ? AppColors.primaryGreen.withOpacity(0.1)
+              : AppColors.lightGrey.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: locationCount > 0 
+                ? AppColors.primaryGreen.withOpacity(0.3)
+                : AppColors.lightGrey.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              locationCount > 0 ? Icons.map_outlined : Icons.location_off_outlined,
+              size: 16,
+              color: locationCount > 0 
+                  ? AppColors.primaryGreen
+                  : AppColors.hintText,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              locationCount > 0 ? 'Maps ($locationCount)' : 'No locations',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: locationCount > 0 
+                    ? AppColors.primaryGreen
+                    : AppColors.hintText,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  /// Open Google Maps for a specific day's activities
+  Future<void> _openDayInGoogleMaps(DayPlanModel day, int dayNumber) async {
+    try {
+      final locations = _extractValidLocations(day);
+      
+      if (locations.isEmpty) {
+        _showLocationError('No valid locations found for Day $dayNumber');
+        return;
+      }
+      
+      String mapsUrl;
+      List<String> fallbackUrls = [];
+      
+      if (locations.length == 1) {
+        // Single location - try different URL schemes
+        final location = locations.first;
+        mapsUrl = 'https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lng}';
+        
+        // Add fallback URLs
+        fallbackUrls = [
+          'geo:${location.lat},${location.lng}?q=${location.lat},${location.lng}(${Uri.encodeComponent(location.activity)})',
+          'https://maps.google.com/?q=${location.lat},${location.lng}',
+          'https://www.google.com/maps/@${location.lat},${location.lng},15z',
+        ];
+      } else {
+        // Multiple locations - create a route or show all locations
+        final destination = locations.first;
+        final waypoints = locations.skip(1).map((loc) => '${loc.lat},${loc.lng}').join('|');
+        
+        if (waypoints.isNotEmpty) {
+          mapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=${destination.lat},${destination.lng}&waypoints=$waypoints&travelmode=walking';
+          
+          // Add fallback URLs for multiple locations
+          fallbackUrls = [
+            'geo:${destination.lat},${destination.lng}?q=${destination.lat},${destination.lng}',
+            'https://maps.google.com/maps/dir/${locations.map((loc) => '${loc.lat},${loc.lng}').join('/')}',
+            'https://www.google.com/maps/@${destination.lat},${destination.lng},12z',
+          ];
+        } else {
+          mapsUrl = 'https://www.google.com/maps/search/?api=1&query=${destination.lat},${destination.lng}';
+          fallbackUrls = [
+            'geo:${destination.lat},${destination.lng}',
+            'https://maps.google.com/?q=${destination.lat},${destination.lng}',
+          ];
+        }
+      }
+      
+      // Try launching the primary URL first, then fallbacks
+      bool launched = await _tryLaunchUrls([mapsUrl, ...fallbackUrls]);
+      
+      if (!launched) {
+        _showLocationError('Could not open Google Maps - no compatible apps found');
+      }
+      
+    } catch (e) {
+      _showLocationError('Error opening maps: ${e.toString()}');
+    }
+  }
+  
+  /// Try to launch a list of URLs, returning true if any succeeds
+  Future<bool> _tryLaunchUrls(List<String> urls) async {
+    for (final url in urls) {
+      try {
+        final uri = Uri.parse(url);
+        
+        if (await canLaunchUrl(uri)) {
+          // Try different launch modes
+          final modes = [
+            LaunchMode.externalApplication,
+            LaunchMode.platformDefault,
+            LaunchMode.inAppWebView,
+          ];
+          
+          for (final mode in modes) {
+            try {
+              final launched = await launchUrl(uri, mode: mode);
+              if (launched) {
+                return true;
+              }
+            } catch (e) {
+              continue;
+            }
+          }
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+    
+    return false;
+  }
+  
+  /// Extract valid locations from a day's activities
+  List<LocationData> _extractValidLocations(DayPlanModel day) {
+    final locations = <LocationData>[];
+    
+    for (final item in day.items) {
+      if (item.location.isNotEmpty && item.location != 'N/A') {
+        try {
+          final parts = item.location.split(',');
+          if (parts.length == 2) {
+            final lat = double.parse(parts[0].trim());
+            final lng = double.parse(parts[1].trim());
+            
+            // Basic validation for coordinates
+            if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+              locations.add(LocationData(
+                lat: lat,
+                lng: lng,
+                activity: item.activity,
+                time: item.time,
+              ));
+            }
+          }
+        } catch (e) {
+          // Skip invalid coordinates
+          continue;
+        }
+      }
+    }
+    
+    return locations;
+  }
+  
+  /// Show error message when location operations fail
+  void _showLocationError(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: const Duration(seconds: 3),
+          backgroundColor: Colors.red.shade600,
+        ),
+      );
+    }
+  }
+  
   void _onAnimationComplete() {
     if (mounted && _currentAnimationStep < _animationChunks.length - 1) {
       setState(() {
@@ -471,4 +679,19 @@ class _ItineraryCardState extends State<ItineraryCard> {
       });
     }
   }
+}
+
+/// Helper class to store location data for Google Maps integration
+class LocationData {
+  final double lat;
+  final double lng;
+  final String activity;
+  final String time;
+  
+  LocationData({
+    required this.lat,
+    required this.lng,
+    required this.activity,
+    required this.time,
+  });
 }

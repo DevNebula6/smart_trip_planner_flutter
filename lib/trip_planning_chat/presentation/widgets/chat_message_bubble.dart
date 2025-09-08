@@ -1,4 +1,3 @@
-import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/constants/app_styles.dart';
@@ -83,21 +82,13 @@ class ChatMessageBubble extends StatelessWidget {
                     children: [
                       // Message text
                       if (message.content.isNotEmpty)
-                        isUser?
                         Text(
                           message.content,
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: isUser ? AppColors.white : AppColors.primaryText,
                             height: 1.4,
                           ),
-                        ) 
-                        :
-                        AnimatedTextKit(animatedTexts: [
-                          TyperAnimatedText(
-                            message.content,
-                            speed: const Duration(milliseconds: 10),
-                          )
-                        ]),
+                        ),
                       
                       // Itinerary card if present
                       if (itinerary != null) ...[

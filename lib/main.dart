@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:smart_trip_planner_flutter/ai_agent/services/ai_agent_service_export.dart';
 import 'package:smart_trip_planner_flutter/core/storage/hive_storage_service.dart';
+import 'package:smart_trip_planner_flutter/core/services/token_tracking_service.dart';
 import 'package:smart_trip_planner_flutter/auth/data/datasources/local/mock_auth_datasource.dart';
 import 'package:smart_trip_planner_flutter/auth/presentation/bloc/auth_bloc.dart';
 import 'package:smart_trip_planner_flutter/shared/navigation/app_router.dart';
@@ -28,6 +29,14 @@ void main() async {
     Logger.e('Failed to initialize storage: $e', tag: 'Main');
   }
   
+  // Initialize token tracking service
+  try {
+    await TokenTrackingService().init();
+    Logger.d('Token tracking service initialized', tag: 'Main');
+  } catch (e) {
+    Logger.e('Failed to initialize token tracking: $e', tag: 'Main');
+  }
+  
   runApp(const MainApp());
 }
 
@@ -38,8 +47,18 @@ class MainApp extends StatelessWidget {
   Widget build(BuildContext context) {
     String apiKey = dotenv.env['GEMINI_API_KEY']!; 
     
-    // Use Hive-enhanced AI service factory
-    final aiService = AIAgentServiceFactory.create(geminiApiKey: apiKey);
+    // Get web search API keys from environment
+    String? googleSearchApiKey = dotenv.env['GOOGLE_SEARCH_API_KEY'];
+    String? googleSearchEngineId = dotenv.env['GOOGLE_SEARCH_ENGINE_ID'];
+    String? bingSearchApiKey = dotenv.env['BING_SEARCH_API_KEY'];
+    
+    // Use Hive-enhanced AI service factory with web search support
+    final aiService = AIAgentServiceFactory.create(
+      geminiApiKey: apiKey,
+      googleSearchApiKey: googleSearchApiKey,
+      googleSearchEngineId: googleSearchEngineId,
+      bingSearchApiKey: bingSearchApiKey,
+    );
     final authRepository = MockAuthDatasource();
 
     return MultiBlocProvider(
