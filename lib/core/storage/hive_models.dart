@@ -431,7 +431,32 @@ class HiveSessionState extends HiveObject {
 
   /// Get conversation history as Gemini Content objects
   List<Content> get geminiConversationHistory {
-    return conversationHistory.map((hiveContent) => hiveContent.toContent()).toList();
+    try {
+      final contentList = <Content>[];
+      
+      for (final hiveContent in conversationHistory) {
+        try {
+          // Validate the hive content before conversion
+          if (hiveContent.parts.isEmpty) {
+            print('Warning: Skipping HiveContentModel with empty parts');
+            continue;
+          }
+          
+          final content = hiveContent.toContent();
+          contentList.add(content);
+        } catch (e) {
+          print('Warning: Failed to convert HiveContentModel to Content: $e');
+          // Skip invalid content rather than crashing
+          continue;
+        }
+      }
+      
+      print('Successfully converted ${contentList.length} content objects from ${conversationHistory.length} hive objects');
+      return contentList;
+    } catch (e) {
+      print('Error in geminiConversationHistory: $e');
+      return [];
+    }
   }
 }
 
@@ -461,14 +486,34 @@ class HiveContentModel {
 
   /// Convert to Gemini Content
   Content toContent() {
-    final geminiParts = parts.map((part) => part.toPart()).toList();
-    
-    if (role == 'user') {
-      return Content.text((geminiParts.first as TextPart).text);
-    } else if (role == 'model') {
-      return Content.model(geminiParts);
-    } else {
-      return Content(role, geminiParts);
+    try {
+      final geminiParts = parts.map((part) => part.toPart()).toList();
+      
+      // Validate we have valid parts
+      if (geminiParts.isEmpty) {
+        print('Warning: Empty parts in HiveContentModel, creating default text part');
+        geminiParts.add(TextPart(''));
+      }
+      
+      // Validate role and create appropriate Content
+      if (role == 'user') {
+        final firstPart = geminiParts.first;
+        if (firstPart is TextPart) {
+          return Content.text(firstPart.text);
+        } else {
+          print('Warning: Non-text part in user content, using toString()');
+          return Content.text(firstPart.toString());
+        }
+      } else if (role == 'model') {
+        return Content.model(geminiParts);
+      } else {
+        print('Warning: Unknown role $role, defaulting to model');
+        return Content.model(geminiParts);
+      }
+    } catch (e) {
+      print('Error converting HiveContentModel to Content: $e');
+      // Return a safe default
+      return Content.text('');
     }
   }
 }

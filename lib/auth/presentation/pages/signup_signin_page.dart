@@ -1,6 +1,10 @@
+
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:smart_trip_planner_flutter/auth/presentation/bloc/auth_bloc.dart';
+import 'package:smart_trip_planner_flutter/auth/presentation/bloc/auth_event.dart';
+import 'package:smart_trip_planner_flutter/auth/presentation/bloc/auth_state.dart';
 import 'package:smart_trip_planner_flutter/core/constants/app_styles.dart';
-import 'package:smart_trip_planner_flutter/shared/navigation/app_router.dart';
 
 enum AuthMode { signUp, signIn }
 
@@ -76,32 +80,92 @@ class _SignUpSignInPageState extends State<SignUpSignInPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppDimensions.paddingL),
-          child: Column(
-            children: [
-              // App Logo and Branding
-              _buildAppBranding(),
-              
-              const SizedBox(height: AppDimensions.marginXL),
-              
-              // Animated Content
-              AnimatedBuilder(
-                animation: _animationController,
-                builder: (context, child) {
-                  return FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: SlideTransition(
-                      position: _slideAnimation,
-                      child: _buildContent(),
-                    ),
-                  );
-                },
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) {
+        // Show success message for successful registration
+        if (state is AuthStateLoggedIn && _authMode == AuthMode.signUp) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Account created successfully! Welcome to Itinera AI!'),
+              backgroundColor: AppColors.primaryGreen,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+        
+        // Show success message for successful login
+        if (state is AuthStateLoggedIn && _authMode == AuthMode.signIn) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Welcome back! Login successful.'),
+              backgroundColor: AppColors.primaryGreen,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+        
+        // Show error messages
+        if (state is AuthStateLoggedOut && state.exception != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(_getErrorMessage(state.exception!)),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 3),
+              action: SnackBarAction(
+                label: 'DISMISS',
+                textColor: AppColors.white,
+                onPressed: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
               ),
-            ],
+            ),
+          );
+        }
+        
+        if (state is AuthStateRegistering && state.exception != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Registration failed: ${_getErrorMessage(state.exception!)}'),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 3),
+              action: SnackBarAction(
+                label: 'DISMISS',
+                textColor: AppColors.white,
+                onPressed: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+              ),
+            ),
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.backgroundColor,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppDimensions.paddingL),
+            child: Column(
+              children: [
+                // App Logo and Branding
+                _buildAppBranding(),
+                
+                const SizedBox(height: AppDimensions.marginXL),
+                
+                // Animated Content
+                AnimatedBuilder(
+                  animation: _animationController,
+                  builder: (context, child) {
+                    return FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: SlideTransition(
+                        position: _slideAnimation,
+                        child: _buildContent(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -250,43 +314,58 @@ class _SignUpSignInPageState extends State<SignUpSignInPage>
   }
 
   Widget _buildGoogleButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: AppDimensions.buttonHeightL,
-      child: OutlinedButton(
-        onPressed: () {
-          // TODO: Handle Google sign in/up
-        },
-        style: OutlinedButton.styleFrom(
-          backgroundColor: AppColors.white,
-          side: const BorderSide(color: AppColors.grey, width: 1),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 20,
-              height: 20,
-              child:Image.asset("assets/icons/Google Icon.png")
-              
-            ),
-            const SizedBox(width: AppDimensions.marginM),
-            Text(
-              _authMode == AuthMode.signUp 
-                  ? 'Sign up with Google'
-                  : 'Sign in with Google',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: AppColors.primaryText,
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        final isLoading = state.isLoading;
+        
+        return SizedBox(
+          width: double.infinity,
+          height: AppDimensions.buttonHeightL,
+          child: OutlinedButton(
+            onPressed: isLoading ? null : () {
+              context.read<AuthBloc>().add(const AuthEventGoogleSignIn());
+            },
+            style: OutlinedButton.styleFrom(
+              backgroundColor: AppColors.white,
+              side: const BorderSide(color: AppColors.grey, width: 1),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppDimensions.radiusL),
               ),
             ),
-          ],
-        ),
-      ),
+            child: isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child:Image.asset("assets/icons/Google Icon.png")
+                        
+                      ),
+                      const SizedBox(width: AppDimensions.marginM),
+                      Text(
+                        _authMode == AuthMode.signUp 
+                            ? 'Sign up with Google'
+                            : 'Sign in with Google',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.primaryText,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        );
+      },
     );
   }
 
@@ -534,7 +613,7 @@ class _SignUpSignInPageState extends State<SignUpSignInPage>
         ),
         TextButton(
           onPressed: () {
-            // TODO: Handle forgot password
+            context.read<AuthBloc>().add(const AuthEventForgotPassword());
           },
           child: const Text(
             'Forgot your password?',
@@ -550,40 +629,61 @@ class _SignUpSignInPageState extends State<SignUpSignInPage>
   }
 
   Widget _buildMainActionButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: AppDimensions.buttonHeightL,
-      child: ElevatedButton(
-        onPressed: () {
-          if (_formKey.currentState!.validate()) {
-            if (_authMode == AuthMode.signUp) {
-              // TODO: Handle sign up
-              print('Sign up pressed');
-              Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
-
-            } else {
-              // TODO: Handle login
-              print('Login pressed');
-              Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
-            }
-          }
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primaryGreen,
-          foregroundColor: AppColors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        final isLoading = state.isLoading;
+        
+        return SizedBox(
+          width: double.infinity,
+          height: AppDimensions.buttonHeightL,
+          child: ElevatedButton(
+            onPressed: isLoading ? null : () {
+              if (_formKey.currentState!.validate()) {
+                if (_authMode == AuthMode.signUp) {
+                  // Handle sign up
+                  context.read<AuthBloc>().add(
+                    AuthEventRegister(
+                      _emailController.text,
+                      _passwordController.text,
+                    )
+                  );
+                } else {
+                  context.read<AuthBloc>().add(
+                    AuthEventLogIn(
+                      _emailController.text,
+                      _passwordController.text,
+                    )
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryGreen,
+              foregroundColor: AppColors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+              ),
+              elevation: 2,
+            ),
+            child: isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
+                    ),
+                  )
+                : Text(
+                    _authMode == AuthMode.signUp ? 'Sign UP' : 'Login',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
           ),
-          elevation: 2,
-        ),
-        child: Text(
-          _authMode == AuthMode.signUp ? 'Sign UP' : 'Login',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -613,5 +713,31 @@ class _SignUpSignInPageState extends State<SignUpSignInPage>
         ),
       ],
     );
+  }
+
+  String _getErrorMessage(Exception exception) {
+    final errorMessage = exception.toString().toLowerCase();
+    
+    if (errorMessage.contains('user not found') || errorMessage.contains('usernotfound')) {
+      return 'No account found with this email address. Please sign up first.';
+    }
+    if (errorMessage.contains('email already in use') || errorMessage.contains('emailalreadyinuse')) {
+      return 'An account with this email already exists. Please sign in instead.';
+    }
+    if (errorMessage.contains('wrong password') || errorMessage.contains('wrongpassword')) {
+      return 'Incorrect password. Please try again.';
+    }
+    if (errorMessage.contains('invalid email') || errorMessage.contains('invalidemail')) {
+      return 'Please enter a valid email address.';
+    }
+    if (errorMessage.contains('weak password') || errorMessage.contains('weakpassword')) {
+      return 'Password is too weak. Please choose a stronger password.';
+    }
+    if (errorMessage.contains('network') || errorMessage.contains('connection')) {
+      return 'Network error. Please check your connection and try again.';
+    }
+    
+    // Generic fallback
+    return 'Something went wrong. Please try again.';
   }
 }

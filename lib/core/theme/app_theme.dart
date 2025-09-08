@@ -29,78 +29,83 @@ class AppTheme {
   
   static TextTheme _buildTextTheme() {
     return TextTheme(
-      displayLarge: GoogleFonts.inter(
+      displayLarge: GoogleFonts.poppins(
+        fontSize: 40,
+        fontWeight: FontWeight.bold,
+        color: AppColors.primaryText,
+        letterSpacing: -0.5,
+      ),
+      displayMedium: GoogleFonts.poppins(
+        fontSize: 36,
+        fontWeight: FontWeight.bold,
+        color: AppColors.primaryText,
+        letterSpacing: -0.5,
+      ),
+      displaySmall: GoogleFonts.poppins(
         fontSize: 32,
-        fontWeight: FontWeight.bold,
+        fontWeight: FontWeight.w600,
         color: AppColors.primaryText,
+        letterSpacing: -0.25,
       ),
-      displayMedium: GoogleFonts.inter(
+      headlineLarge: GoogleFonts.poppins(
         fontSize: 28,
-        fontWeight: FontWeight.bold,
+        fontWeight: FontWeight.w700,
         color: AppColors.primaryText,
+        letterSpacing: -0.25,
       ),
-      displaySmall: GoogleFonts.inter(
+      headlineMedium: GoogleFonts.poppins(
         fontSize: 24,
         fontWeight: FontWeight.w600,
         color: AppColors.primaryText,
+        letterSpacing: -0.25,
       ),
-      headlineLarge: GoogleFonts.inter(
+      headlineSmall: GoogleFonts.poppins(
         fontSize: 22,
         fontWeight: FontWeight.w600,
         color: AppColors.primaryText,
       ),
-      headlineMedium: GoogleFonts.inter(
+      titleLarge: GoogleFonts.poppins(
         fontSize: 20,
         fontWeight: FontWeight.w600,
         color: AppColors.primaryText,
       ),
-      headlineSmall: GoogleFonts.inter(
+      titleMedium: GoogleFonts.poppins(
         fontSize: 18,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w500,
         color: AppColors.primaryText,
       ),
-      titleLarge: GoogleFonts.inter(
+      titleSmall: GoogleFonts.poppins(
         fontSize: 16,
-        fontWeight: FontWeight.w600,
-        color: AppColors.primaryText,
-      ),
-      titleMedium: GoogleFonts.inter(
-        fontSize: 14,
         fontWeight: FontWeight.w500,
         color: AppColors.primaryText,
       ),
-      titleSmall: GoogleFonts.inter(
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
+      bodyLarge: GoogleFonts.poppins(
+        fontSize: 18,
+        fontWeight: FontWeight.normal,
         color: AppColors.primaryText,
       ),
-      bodyLarge: GoogleFonts.inter(
+      bodyMedium: GoogleFonts.poppins(
         fontSize: 16,
         fontWeight: FontWeight.normal,
         color: AppColors.primaryText,
       ),
-      bodyMedium: GoogleFonts.inter(
+      bodySmall: GoogleFonts.poppins(
         fontSize: 14,
-        fontWeight: FontWeight.normal,
-        color: AppColors.primaryText,
-      ),
-      bodySmall: GoogleFonts.inter(
-        fontSize: 12,
         fontWeight: FontWeight.normal,
         color: AppColors.secondaryText,
       ),
-      labelLarge: GoogleFonts.inter(
-        fontSize: 14,
+      labelLarge: GoogleFonts.poppins(
+        fontSize: 16,
         fontWeight: FontWeight.w500,
         color: AppColors.primaryText,
       ),
-      labelMedium: GoogleFonts.inter(
-        fontSize: 12,
+      labelMedium: GoogleFonts.poppins(
+        fontSize: 14,
         fontWeight: FontWeight.w500,
         color: AppColors.secondaryText,
       ),
-      labelSmall: GoogleFonts.inter(
-        fontSize: 10,
+      labelSmall: GoogleFonts.poppins(
+        fontSize: 12,
         fontWeight: FontWeight.w500,
         color: AppColors.hintText,
       ),
@@ -112,8 +117,8 @@ class AppTheme {
       elevation: 0,
       backgroundColor: AppColors.white,
       foregroundColor: AppColors.primaryText,
-      titleTextStyle: GoogleFonts.inter(
-        fontSize: 18,
+      titleTextStyle: GoogleFonts.poppins(
+        fontSize: 20,
         fontWeight: FontWeight.w600,
         color: AppColors.primaryText,
       ),
@@ -132,9 +137,10 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppDimensions.radiusL),
         ),
-        minimumSize: const Size(double.infinity, AppDimensions.buttonHeightM),
-        textStyle: GoogleFonts.inter(
-          fontSize: 16,
+        minimumSize: const Size(double.infinity, 56),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+        textStyle: GoogleFonts.poppins(
+          fontSize: 18,
           fontWeight: FontWeight.w600,
         ),
       ),

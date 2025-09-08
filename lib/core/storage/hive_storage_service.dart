@@ -139,7 +139,18 @@ class HiveStorageService {
   Future<void> saveSession(HiveSessionState session) async {
     try {
       final box = await _getSessionsBox();
+      
+      // Debug logging to see what we're saving
+      Logger.d('Saving session ${session.sessionId} with tripContext: ${session.tripContext}', tag: 'HiveStorage');
+      Logger.d('Session tripContext keys before save: ${session.tripContext.keys}', tag: 'HiveStorage');
+      
       await box.put(session.sessionId, session);
+      
+      // Verify what was actually saved
+      final savedSession = box.get(session.sessionId);
+      Logger.d('Verified saved session tripContext keys: ${savedSession?.tripContext.keys}', tag: 'HiveStorage');
+      Logger.d('Verified saved tripContext: ${savedSession?.tripContext}', tag: 'HiveStorage');
+      
       Logger.d('Saved session: ${session.sessionId}', tag: 'HiveStorage');
     } catch (e) {
       Logger.e('Failed to save session: $e', tag: 'HiveStorage');
@@ -162,8 +173,17 @@ class HiveStorageService {
   Future<List<HiveSessionState>> getUserSessions(String userId) async {
     try {
       final box = await _getSessionsBox();
-      return box.values.where((session) => 
+      final sessions = box.values.where((session) => 
           session.userId == userId && session.isValid).toList();
+          
+      Logger.d('Loading ${sessions.length} sessions for user: $userId', tag: 'HiveStorage');
+      
+      for (final session in sessions) {
+        Logger.d('Loaded session ${session.sessionId} with tripContext keys: ${session.tripContext.keys}', tag: 'HiveStorage');
+        Logger.d('Session tripContext content: ${session.tripContext}', tag: 'HiveStorage');
+      }
+      
+      return sessions;
     } catch (e) {
       Logger.e('Failed to get user sessions: $e', tag: 'HiveStorage');
       return [];

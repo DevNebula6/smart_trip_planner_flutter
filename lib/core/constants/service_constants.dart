@@ -8,7 +8,7 @@ class AIConfig {
   AIConfig._(); // Private constructor
   
   // Gemini Model Configuration
-  static const String defaultModel = 'gemini-2.0-flash-exp';
+  static const String defaultModel = 'gemini-1.5-flash';
   static const double temperature = 0.7;
   static const int topK = 40;
   static const double topP = 0.95;

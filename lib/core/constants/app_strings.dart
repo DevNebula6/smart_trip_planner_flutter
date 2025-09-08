@@ -47,6 +47,6 @@ class AppStrings {
   
   // Placeholders
   static const String emailPlaceholder = 'john@example.com';
-  static const String tripDescriptionPlaceholder = '7 days in Bali next April, 3 people, mid-range budget, wanted to explore less populated areas, it should be a peaceful trip!';
+  static const String tripDescriptionPlaceholder = "Tell us your dream destination and we will create the perfect itinerary for you";
   static const String followUpPlaceholder = 'Follow up to refine';
 }
