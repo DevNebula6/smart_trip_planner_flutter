@@ -270,8 +270,8 @@ class HiveStorageService {
       final box = await _getItinerariesBox();
       await box.delete(id);
       
-      // Also delete related chat messages
-      await deleteMessagesForItinerary(id);
+      // Also delete related chat messages (deprecated - now using sessions)
+      // await deleteMessagesForSession(sessionId);
       
       Logger.d('Deleted itinerary: $id', tag: 'HiveStorage');
     } catch (e) {
@@ -292,12 +292,12 @@ class HiveStorageService {
     }
   }
 
-  /// Get messages for itinerary
-  Future<List<HiveChatMessageModel>> getMessagesForItinerary(String itineraryId) async {
+  /// Get messages for session
+  Future<List<HiveChatMessageModel>> getMessagesForSession(String sessionId) async {
     try {
       final box = await _getMessagesBox();
       return box.values
-          .where((message) => message.itineraryId == itineraryId)
+          .where((message) => message.sessionId == sessionId)
           .toList()
         ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
     } catch (e) {
@@ -306,14 +306,14 @@ class HiveStorageService {
     }
   }
 
-  /// Delete messages for itinerary
-  Future<void> deleteMessagesForItinerary(String itineraryId) async {
+  /// Delete messages for session
+  Future<void> deleteMessagesForSession(String sessionId) async {
     try {
       final box = await _getMessagesBox();
       final messagesToDelete = <String>[];
       
       for (final entry in box.toMap().entries) {
-        if (entry.value.itineraryId == itineraryId) {
+        if (entry.value.sessionId == sessionId) {
           messagesToDelete.add(entry.key);
         }
       }

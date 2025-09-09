@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:smart_trip_planner_flutter/ai_agent/services/ai_agent_service_export.dart';
+import 'package:smart_trip_planner_flutter/ai_agent/services/gemini_service.dart';
 import 'package:smart_trip_planner_flutter/core/storage/hive_storage_service.dart';
 import 'package:smart_trip_planner_flutter/core/services/token_tracking_service.dart';
 import 'package:smart_trip_planner_flutter/auth/data/datasources/local/mock_auth_datasource.dart';
@@ -10,7 +11,7 @@ import 'package:smart_trip_planner_flutter/shared/navigation/app_router.dart';
 import 'package:smart_trip_planner_flutter/shared/auth/auth_wrapper.dart';
 import 'package:smart_trip_planner_flutter/core/theme/app_theme.dart';
 import 'package:smart_trip_planner_flutter/trip_planning_chat/presentation/blocs/home_bloc.dart';
-import 'package:smart_trip_planner_flutter/trip_planning_chat/presentation/blocs/chat_bloc.dart';
+import 'package:smart_trip_planner_flutter/trip_planning_chat/presentation/blocs/message_based_chat_bloc.dart';
 import 'package:smart_trip_planner_flutter/auth/presentation/bloc/auth_event.dart';
 import 'package:smart_trip_planner_flutter/core/utils/helpers.dart';
 
@@ -69,9 +70,9 @@ class MainApp extends StatelessWidget {
         BlocProvider<HomeBloc>(
           create: (context) => HomeBloc(aiService: aiService),
         ),
-        BlocProvider<ChatBloc>(
-          create: (context) => ChatBloc(
-            aiService: aiService,
+        BlocProvider<MessageBasedChatBloc>(
+          create: (context) => MessageBasedChatBloc(
+            aiService: aiService as GeminiAIService,
             storageService: HiveStorageService.instance,
           ),
         ),
@@ -80,7 +81,7 @@ class MainApp extends StatelessWidget {
         title: 'Smart Trip Planner',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        home: const AuthWrapper(), // Use AuthWrapper as the main entry point
+        home: const AuthWrapper(),
         onGenerateRoute: AppRouter.generateRoute,
       ),
     );

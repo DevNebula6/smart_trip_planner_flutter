@@ -183,14 +183,14 @@ class HiveActivityItemModel {
   }
 }
 
-/// **Hive Chat Message Model**
+/// **Enhanced Hive Chat Message Model**
 @HiveType(typeId: 3)
 class HiveChatMessageModel extends HiveObject {
   @HiveField(0)
   String id;
   
   @HiveField(1)
-  String itineraryId;
+  String sessionId;
   
   @HiveField(2)
   String content;
@@ -203,37 +203,51 @@ class HiveChatMessageModel extends HiveObject {
   
   @HiveField(5)
   int? tokenCount;
+  
+  @HiveField(6)
+  HiveItineraryModel? itinerary; // Optional embedded itinerary
+  
+  @HiveField(7)
+  int messageType; // MessageType as int for Hive compatibility
 
   HiveChatMessageModel({
     required this.id,
-    required this.itineraryId,
+    required this.sessionId,
     required this.content,
     required this.role,
     required this.timestamp,
+    required this.messageType,
     this.tokenCount,
+    this.itinerary,
   });
 
-  /// Convert to JSON
+  /// Convert to domain model
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'itineraryId': itineraryId,
+      'sessionId': sessionId,
       'content': content,
       'role': role,
       'timestamp': timestamp.toIso8601String(),
+      'messageType': messageType,
       'tokenCount': tokenCount,
+      'itinerary': itinerary?.toJson(),
     };
   }
 
-  /// Create from JSON
+  /// Create from domain model
   factory HiveChatMessageModel.fromJson(Map<String, dynamic> json) {
     return HiveChatMessageModel(
       id: json['id'] as String,
-      itineraryId: json['itineraryId'] as String,
+      sessionId: json['sessionId'] as String,
       content: json['content'] as String,
       role: json['role'] as String,
       timestamp: DateTime.parse(json['timestamp'] as String),
+      messageType: json['messageType'] as int,
       tokenCount: json['tokenCount'] as int?,
+      itinerary: json['itinerary'] != null
+          ? HiveItineraryModel.fromJson(json['itinerary'])
+          : null,
     );
   }
 }
@@ -379,19 +393,89 @@ class HiveSessionState extends HiveObject {
   void extractTripContext(String userMessage) {
     final lowerMessage = userMessage.toLowerCase();
 
-    if (lowerMessage.contains('to ') || lowerMessage.contains('visit ')) {
-      final destinationMatch = RegExp(r'(?:to|visit)\s+([a-zA-Z\s]+?)(?:\s|$|,)').firstMatch(lowerMessage);
-      if (destinationMatch != null) {
-        tripContext['destination'] = destinationMatch.group(1)?.trim();
+    // Extract destination - enhanced patterns
+    if (lowerMessage.contains(RegExp(r'\b(?:to|visit|in|at)\s+'))) {
+      final destinationPatterns = [
+        RegExp(r'(?:trip|travel|go|visit)\s+(?:to|in)\s+([a-zA-Z\s,]+?)(?:\s+for|\s+in|\s|$|,)'),
+        RegExp(r'(?:to|in|at)\s+([a-zA-Z\s,]+?)(?:\s+for|\s+in|\s|$|,)'),
+        RegExp(r'plan.*?(?:to|in)\s+([a-zA-Z\s,]+?)(?:\s|$|,)'),
+      ];
+      
+      for (final pattern in destinationPatterns) {
+        final match = pattern.firstMatch(lowerMessage);
+        if (match != null) {
+          final destination = match.group(1)?.trim().replaceAll(RegExp(r'\s+'), ' ');
+          if (destination != null && destination.length > 2 && destination.length < 50) {
+            tripContext['destination'] = destination;
+            break;
+          }
+        }
       }
     }
 
-    final durationMatch = RegExp(r'(\d+)\s*(day|week|month)').firstMatch(lowerMessage);
-    if (durationMatch != null) {
-      final number = int.parse(durationMatch.group(1)!);
-      final unit = durationMatch.group(2)!;
-      tripContext['duration_number'] = number;
-      tripContext['duration_unit'] = unit;
+    // Extract duration - enhanced patterns
+    final durationPatterns = [
+      RegExp(r'(\d+)\s*(day|days|week|weeks|month|months)'),
+      RegExp(r'(a|one|two|three|four|five|six|seven|eight|nine|ten)\s*(day|week|month)'),
+      RegExp(r'for\s+(\d+)\s*(day|days|week|weeks)'),
+    ];
+
+    for (final pattern in durationPatterns) {
+      final match = pattern.firstMatch(lowerMessage);
+      if (match != null) {
+        String numberStr = match.group(1)!;
+        final unit = match.group(2)!;
+        
+        // Convert word numbers to digits
+        final wordToNumber = {
+          'a': '1', 'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
+          'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10'
+        };
+        
+        if (wordToNumber.containsKey(numberStr)) {
+          numberStr = wordToNumber[numberStr]!;
+        }
+        
+        if (int.tryParse(numberStr) != null) {
+          final number = int.parse(numberStr);
+          tripContext['duration_number'] = number;
+          tripContext['duration_unit'] = unit;
+          
+          // Create readable duration string
+          final pluralUnit = number > 1 ? '${unit}s' : unit;
+          tripContext['duration'] = '$number $pluralUnit';
+          break;
+        }
+      }
+    }
+
+    // Extract budget type
+    if (lowerMessage.contains(RegExp(r'\b(budget|cheap|affordable|low.cost)\b'))) {
+      tripContext['budget_type'] = 'budget';
+    } else if (lowerMessage.contains(RegExp(r'\b(luxury|expensive|high.end|premium)\b'))) {
+      tripContext['budget_type'] = 'luxury';
+    } else if (lowerMessage.contains(RegExp(r'\b(mid.range|moderate|average)\b'))) {
+      tripContext['budget_type'] = 'mid-range';
+    }
+
+    // Extract travel style
+    if (lowerMessage.contains(RegExp(r'\b(solo|alone|by myself)\b'))) {
+      tripContext['travel_style'] = 'solo';
+    } else if (lowerMessage.contains(RegExp(r'\b(family|kids|children)\b'))) {
+      tripContext['travel_style'] = 'family';
+    } else if (lowerMessage.contains(RegExp(r'\b(couple|romantic|honeymoon)\b'))) {
+      tripContext['travel_style'] = 'couple';
+    } else if (lowerMessage.contains(RegExp(r'\b(group|friends)\b'))) {
+      tripContext['travel_style'] = 'group';
+    }
+
+    // Extract activity preferences
+    if (lowerMessage.contains(RegExp(r'\b(adventure|hiking|trekking|outdoor)\b'))) {
+      tripContext['activity_preference'] = 'adventure';
+    } else if (lowerMessage.contains(RegExp(r'\b(cultural|history|museum|heritage)\b'))) {
+      tripContext['activity_preference'] = 'cultural';
+    } else if (lowerMessage.contains(RegExp(r'\b(relaxing|beach|spa|peaceful)\b'))) {
+      tripContext['activity_preference'] = 'relaxing';
     }
   }
 

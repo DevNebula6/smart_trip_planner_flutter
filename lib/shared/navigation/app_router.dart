@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../auth/presentation/pages/signup_signin_page.dart';
 import '../../trip_planning_chat/presentation/pages/home_page.dart';
-import '../../trip_planning_chat/presentation/pages/chat_page.dart';
+import '../../trip_planning_chat/presentation/pages/enhanced_chat_page.dart';
 import '../../auth/presentation/pages/profile_page.dart';
 import '../onboarding/onboarding_page.dart';
 
@@ -33,7 +33,7 @@ class AppRouter {
       case AppRoutes.chat:
         final args = settings.arguments as Map<String, dynamic>?;
         return MaterialPageRoute(
-          builder: (_) => ChatPage(
+          builder: (_) => EnhancedChatPage(
             initialPrompt: args?['initialPrompt'] as String?,
             sessionId: args?['sessionId'] as String?,
           ),

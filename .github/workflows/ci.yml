@@ -1,0 +1,87 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📚 Git Checkout
+      uses: actions/checkout@v4
+      
+    - name: 🐦 Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.3'
+        cache: true
+        
+    - name: 📦 Install Dependencies
+      run: flutter pub get
+      
+    - name: 🔍 Verify formatting
+      run: dart format --output=none --set-exit-if-changed .
+      
+    - name: 📝 Analyze project source
+      run: flutter analyze
+      
+    - name: 🧪 Run tests
+      run: flutter test --coverage
+      
+    - name: 📊 Check code coverage
+      uses: VeryGoodOpenSource/very_good_coverage@v2
+      with:
+        path: './coverage/lcov.info'
+        min_coverage: 60
+
+  build-android:
+    needs: analyze-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: 📚 Git Checkout
+      uses: actions/checkout@v4
+      
+    - name: 🐦 Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.3'
+        cache: true
+        
+    - name: 📦 Install Dependencies
+      run: flutter pub get
+      
+    - name: 🏗️ Build Android APK
+      run: flutter build apk --release
+      
+    - name: 📤 Upload APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: android-apk
+        path: build/app/outputs/flutter-apk/app-release.apk
+
+  build-ios:
+    needs: analyze-and-test
+    runs-on: macos-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: 📚 Git Checkout
+      uses: actions/checkout@v4
+      
+    - name: 🐦 Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.3'
+        cache: true
+        
+    - name: 📦 Install Dependencies
+      run: flutter pub get
+      
+    - name: 🏗️ Build iOS (no signing)
+      run: flutter build ios --release --no-codesign

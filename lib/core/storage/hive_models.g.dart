@@ -153,22 +153,24 @@ class HiveChatMessageModelAdapter extends TypeAdapter<HiveChatMessageModel> {
     };
     return HiveChatMessageModel(
       id: fields[0] as String,
-      itineraryId: fields[1] as String,
+      sessionId: fields[1] as String,
       content: fields[2] as String,
       role: fields[3] as String,
       timestamp: fields[4] as DateTime,
+      messageType: fields[7] as int,
       tokenCount: fields[5] as int?,
+      itinerary: fields[6] as HiveItineraryModel?,
     );
   }
 
   @override
   void write(BinaryWriter writer, HiveChatMessageModel obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.itineraryId)
+      ..write(obj.sessionId)
       ..writeByte(2)
       ..write(obj.content)
       ..writeByte(3)
@@ -176,7 +178,11 @@ class HiveChatMessageModelAdapter extends TypeAdapter<HiveChatMessageModel> {
       ..writeByte(4)
       ..write(obj.timestamp)
       ..writeByte(5)
-      ..write(obj.tokenCount);
+      ..write(obj.tokenCount)
+      ..writeByte(6)
+      ..write(obj.itinerary)
+      ..writeByte(7)
+      ..write(obj.messageType);
   }
 
   @override

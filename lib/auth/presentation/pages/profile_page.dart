@@ -3,7 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smart_trip_planner_flutter/auth/presentation/bloc/auth_bloc.dart';
 import 'package:smart_trip_planner_flutter/auth/presentation/bloc/auth_event.dart';
 import 'package:smart_trip_planner_flutter/auth/presentation/bloc/auth_state.dart';
+import 'package:smart_trip_planner_flutter/core/constants/app_styles.dart';
 import 'package:smart_trip_planner_flutter/core/services/token_tracking_service.dart';
+import 'package:smart_trip_planner_flutter/shared/navigation/app_router.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -49,7 +51,33 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         centerTitle: false,
       ),
-      body: BlocBuilder<AuthBloc, AuthState>(
+      body: BlocConsumer<AuthBloc, AuthState>(
+        listener:(context, state) {
+        if(state is AuthStateLoggedOut && state.exception == null) {
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            AppRoutes.onboarding, (route) => false
+          );
+        }
+        // Show error messages
+        if (state is AuthStateLoggedOut && state.exception != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.exception!.toString()),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 3),
+              action: SnackBarAction(
+                label: 'DISMISS',
+                textColor: AppColors.white,
+                onPressed: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+              ),
+            ),
+          );
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            AppRoutes.onboarding, (route) => false
+          );
+        }
+      },
         builder: (context, state) {
           if (state is AuthStateLoggedIn) {
             final user = state.user;

@@ -1,7 +1,10 @@
 name: smart_trip_planner_flutter
-description: "A new Flutter project."
+description: "AI-Powered Smart Trip Planner - Create personalized travel itineraries through natural language conversations"
 publish_to: 'none'
-version: 0.1.0
+version: 1.0.0+1
+
+homepage: https://github.com/DevNebula6/smart_trip_planner_flutter
+repository: https://github.com/DevNebula6/smart_trip_planner_flutter
 
 environment:
   sdk: ^3.7.2

@@ -191,34 +191,150 @@ class ActivityItemModel {
   }
 }
 
-/// Chat message model
+/// Enhanced Chat message model with optional itinerary
 class ChatMessageModel {
   String id;
-  String itineraryId;
-  String content;
+  String sessionId;
+  String content; // Text message content (can be follow-up questions, descriptions, etc.)
   String role; // 'user' or 'assistant'
   DateTime timestamp;
   
+  /// Optional itinerary data embedded in the message
+  ItineraryModel? itinerary;
+  
   /// Token usage for this message (cost tracking)
   int? tokenCount;
+  
+  /// Message type for better categorization
+  MessageType type;
 
   ChatMessageModel({
     required this.id,
-    required this.itineraryId,
+    required this.sessionId,
     required this.content,
     required this.role,
     required this.timestamp,
+    required this.type,
+    this.itinerary,
     this.tokenCount,
   });
+
+  /// Create user message
+  factory ChatMessageModel.user({
+    required String sessionId,
+    required String content,
+  }) {
+    return ChatMessageModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      sessionId: sessionId,
+      content: content,
+      role: 'user',
+      timestamp: DateTime.now(),
+      type: MessageType.userText,
+    );
+  }
+  
+  /// Create AI text message (follow-up questions, descriptions, etc.)
+  factory ChatMessageModel.aiText({
+    required String sessionId,
+    required String content,
+    int? tokenCount,
+  }) {
+    return ChatMessageModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      sessionId: sessionId,
+      content: content,
+      role: 'assistant',
+      timestamp: DateTime.now(),
+      type: MessageType.aiText,
+      tokenCount: tokenCount,
+    );
+  }
+  
+  /// Create AI message with itinerary
+  factory ChatMessageModel.aiWithItinerary({
+    required String sessionId,
+    required String content,
+    required ItineraryModel itinerary,
+    int? tokenCount,
+  }) {
+    return ChatMessageModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      sessionId: sessionId,
+      content: content,
+      role: 'assistant',
+      timestamp: DateTime.now(),
+      type: MessageType.aiWithItinerary,
+      itinerary: itinerary,
+      tokenCount: tokenCount,
+    );
+  }
+
+  /// Create AI error message
+  factory ChatMessageModel.aiError({
+    required String sessionId,
+    required String content,
+  }) {
+    return ChatMessageModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      sessionId: sessionId,
+      content: content,
+      role: 'assistant',
+      timestamp: DateTime.now(),
+      type: MessageType.aiError,
+    );
+  }
+
+  /// Check if message has itinerary
+  bool get hasItinerary => itinerary != null;
+  
+  /// Check if message is from user
+  bool get isUser => role == 'user';
+  
+  /// Check if message is from AI
+  bool get isAI => role == 'assistant';
+
+  /// Check if message is an error
+  bool get isError => type == MessageType.aiError;
+
+  /// Create a deep copy of this message
+  ChatMessageModel copyWith({
+    String? id,
+    String? sessionId,
+    String? content,
+    String? role,
+    DateTime? timestamp,
+    MessageType? type,
+    ItineraryModel? itinerary,
+    int? tokenCount,
+  }) {
+    return ChatMessageModel(
+      id: id ?? this.id,
+      sessionId: sessionId ?? this.sessionId,
+      content: content ?? this.content,
+      role: role ?? this.role,
+      timestamp: timestamp ?? this.timestamp,
+      type: type ?? this.type,
+      itinerary: itinerary ?? (this.itinerary != null ? _deepCopyItinerary(this.itinerary!) : null),
+      tokenCount: tokenCount ?? this.tokenCount,
+    );
+  }
+
+  /// Create a deep copy of an itinerary
+  ItineraryModel _deepCopyItinerary(ItineraryModel original) {
+    return ItineraryModel.fromJson(original.toJson());
+  }
 
   /// Simple JSON conversion
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'itineraryId': itineraryId,
+      'sessionId': sessionId,
       'content': content,
       'role': role,
       'timestamp': timestamp.toIso8601String(),
+      'type': type.toString(),
+      'itinerary': itinerary?.toJson(),
       'tokenCount': tokenCount,
     };
   }
@@ -226,11 +342,26 @@ class ChatMessageModel {
   factory ChatMessageModel.fromJson(Map<String, dynamic> json) {
     return ChatMessageModel(
       id: json['id'] as String,
-      itineraryId: json['itineraryId'] as String,
+      sessionId: json['sessionId'] as String,
       content: json['content'] as String,
       role: json['role'] as String,
       timestamp: DateTime.parse(json['timestamp'] as String),
+      type: MessageType.values.firstWhere(
+        (e) => e.toString() == json['type'],
+        orElse: () => MessageType.userText,
+      ),
+      itinerary: json['itinerary'] != null 
+          ? ItineraryModel.fromJson(json['itinerary']) 
+          : null,
       tokenCount: json['tokenCount'] as int?,
     );
   }
+}
+
+/// Message types for better categorization
+enum MessageType {
+  userText,           // User's text message
+  aiText,             // AI's text response (follow-up questions, descriptions)
+  aiWithItinerary,    // AI's response containing both text and itinerary
+  aiError,            // AI's error response
 }

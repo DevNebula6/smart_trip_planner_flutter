@@ -9,17 +9,23 @@ enum AuthView {
 }
 
 @immutable
-abstract class AuthState {
+abstract class AuthState extends Equatable {
   final bool isLoading;
   final String? loadingText;
   const AuthState({
     required this.isLoading,
     this.loadingText = 'Please wait a moment',
   });
+
+  @override
+  List<Object?> get props => [isLoading, loadingText];
 }
 
 class AuthStateUninitialized extends AuthState {
   const AuthStateUninitialized({required super.isLoading});
+
+  @override
+  List<Object?> get props => [...super.props];
 }
 
 class AuthStateRegistering extends AuthState {
@@ -28,6 +34,9 @@ class AuthStateRegistering extends AuthState {
     required this.exception,
     required super.isLoading,
   });
+
+  @override
+  List<Object?> get props => [...super.props, exception];
 }
 
 class AuthStateForgotPassword extends AuthState {
@@ -38,6 +47,9 @@ class AuthStateForgotPassword extends AuthState {
     required this.hasSentEmail,
     required super.isLoading,
   });
+
+  @override
+  List<Object?> get props => [...super.props, exception, hasSentEmail];
 }
 
 class AuthStateLoggedIn extends AuthState {
@@ -48,6 +60,9 @@ class AuthStateLoggedIn extends AuthState {
     required super.isLoading,
     this.exception,
   });
+
+  @override
+  List<Object?> get props => [...super.props, user, exception];
 }
 class AuthStateNeedsVerification extends AuthState {
   final bool emailSent;
@@ -57,23 +72,22 @@ class AuthStateNeedsVerification extends AuthState {
     this.emailSent = false,
     this.exception,
   });
+
+  @override
+  List<Object?> get props => [...super.props, emailSent, exception];
 }
 
-class AuthStateLoggedOut extends AuthState with EquatableMixin {
+class AuthStateLoggedOut extends AuthState {
   final Exception? exception;
-  @override
-  final bool isLoading;
-  @override
-  final String? loadingText;
   final AuthView intendedView; 
   
   const AuthStateLoggedOut({
     required this.exception,
-    required this.isLoading,
-    this.loadingText ,
+    required super.isLoading,
+    super.loadingText,
     this.intendedView = AuthView.signIn, // Default to sign in view
-  }) : super(isLoading: false);
+  });
 
   @override
-  List<Object?> get props => [exception, isLoading, intendedView];
+  List<Object?> get props => [...super.props, exception, intendedView];
 }

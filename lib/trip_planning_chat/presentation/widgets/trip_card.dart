@@ -108,17 +108,50 @@ class TripCard extends StatelessWidget {
       }
     }
     
-    // Try to extract title from destination context
+    // Build a descriptive title from available context
+    final List<String> titleParts = [];
+    
+    // Add duration if available
+    if (context.containsKey('duration')) {
+      titleParts.add(context['duration'] as String);
+    } else if (context.containsKey('duration_number') && context.containsKey('duration_unit')) {
+      final number = context['duration_number'];
+      final unit = context['duration_unit'] as String;
+      final pluralUnit = number > 1 ? '${unit}s' : unit;
+      titleParts.add('$number $pluralUnit');
+    }
+    
+    // Add travel style first for better readability
+    if (context.containsKey('travel_style')) {
+      final style = context['travel_style'] as String;
+      titleParts.add(style);
+    }
+    
+    // Add destination with "to"
     if (context.containsKey('destination')) {
-      final destination = context['destination'] as String?;
-      final duration = context['duration'] as String?;
-      print('TripCard Debug - Found destination: $destination, duration: $duration');
-      
-      if (destination != null) {
-        return duration != null 
-            ? '$duration in $destination'
-            : destination;
+      final destination = context['destination'] as String;
+      if (titleParts.isNotEmpty) {
+        titleParts.add('trip to $destination');
+      } else {
+        titleParts.add('Trip to $destination');
       }
+    } else {
+      titleParts.add('trip');
+    }
+    
+    // Add budget type if available and no destination to keep it concise
+    if (context.containsKey('budget_type') && !context.containsKey('destination')) {
+      final budget = context['budget_type'] as String;
+      titleParts.add('($budget)');
+    }
+    
+    // Create title
+    if (titleParts.isNotEmpty) {
+      String title = titleParts.join(' ');
+      // Capitalize first letter
+      title = title[0].toUpperCase() + title.substring(1);
+      print('TripCard Debug - Built descriptive title: $title');
+      return title;
     }
     
     // Fallback to session ID or a generic title

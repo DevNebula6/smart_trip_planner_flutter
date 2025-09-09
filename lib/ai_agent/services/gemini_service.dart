@@ -2,7 +2,6 @@ import 'dart:math';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:smart_trip_planner_flutter/ai_agent/services/ai_agent_service.dart';
 import 'package:smart_trip_planner_flutter/core/errors/failures.dart';
@@ -11,20 +10,10 @@ import 'package:smart_trip_planner_flutter/core/storage/hive_models.dart';
 import 'package:smart_trip_planner_flutter/ai_agent/models/trip_session_model.dart';
 import 'package:smart_trip_planner_flutter/trip_planning_chat/data/models/itinerary_models.dart';
 import 'package:smart_trip_planner_flutter/ai_agent/services/web_search_service.dart';
+import 'package:smart_trip_planner_flutter/ai_agent/services/ai_response_parser.dart';
 import 'package:smart_trip_planner_flutter/core/services/token_tracking_service.dart';
 import '../../core/utils/helpers.dart';
 
-/// **Follow-Up Question Exception**
-/// 
-/// Thrown when the AI asks a follow-up question instead of returning an itinerary
-class FollowUpQuestionException implements Exception {
-  final String question;
-  
-  const FollowUpQuestionException(this.question);
-  
-  @override
-  String toString() => 'FollowUpQuestionException: $question';
-}
 
 
 /// **Gemini Service**
@@ -49,7 +38,6 @@ class GeminiAIService implements AIAgentService {
     required String apiKey,
     String? googleSearchApiKey,
     String? googleSearchEngineId,
-    String? bingSearchApiKey,
   }) : _webSearchTool = _createWebSearchTool(
           googleSearchApiKey: googleSearchApiKey,
           googleSearchEngineId: googleSearchEngineId,
@@ -61,7 +49,6 @@ class GeminiAIService implements AIAgentService {
           tools: _createTools(
             googleSearchApiKey: googleSearchApiKey,
             googleSearchEngineId: googleSearchEngineId,
-            bingSearchApiKey: bingSearchApiKey,
           ),
           generationConfig: GenerationConfig(
             temperature: 0.7,
@@ -75,12 +62,9 @@ class GeminiAIService implements AIAgentService {
     // Log web search tool configuration
     final hasGoogleSearch = googleSearchApiKey?.isNotEmpty == true && 
                            googleSearchEngineId?.isNotEmpty == true;
-    final hasBingSearch = bingSearchApiKey?.isNotEmpty == true;
     
     if (hasGoogleSearch) {
       Logger.d('Web search configured with Google Custom Search API', tag: 'GeminiAI');
-    } else if (hasBingSearch) {
-      Logger.d('Web search configured with Bing Web Search API', tag: 'GeminiAI');
     } else {
       Logger.d('Web search not configured - no API keys provided', tag: 'GeminiAI');
     }
@@ -174,6 +158,147 @@ class GeminiAIService implements AIAgentService {
     }
   }
 
+  /// **NEW: Generate Message Response**
+  /// 
+  /// Generates AI response as a structured message that can contain:
+  /// - Text response (follow-up questions, descriptions, etc.)
+  /// - Optional itinerary data
+  /// - Both text and itinerary combined
+  Future<ChatMessageModel> generateMessageResponse({
+    required String sessionId,
+    required String userMessage,
+    String? userId,
+  }) async {
+    try {
+      Logger.d('Generating message response for session: $sessionId', tag: 'GeminiAI');
+      
+      // Get session state first
+      final sessionState = await getSession(sessionId);
+      if (sessionState == null) {
+        throw AIAgentException('Could not retrieve session: $sessionId');
+      }
+      
+      // Get or create Hive session
+      final hiveSession = await _getOrCreateHiveSession(sessionState, sessionId);
+      
+      // Build context prompt with user preferences and trip context
+      final contextPrompt = hiveSession.buildRefinementContext();
+      final fullPrompt = '''
+$contextPrompt
+
+User Request: $userMessage
+
+IMPORTANT: Create a response based on the user's request and preferences above.
+''';
+
+      // Get Gemini chat session
+      final chatSession = await _getOrCreateGeminiSession(hiveSession);
+      
+      // Send message
+      var response = await chatSession.sendMessage(Content.text(fullPrompt)).timeout(
+        const Duration(seconds: 45),
+        onTimeout: () {
+          throw TimeoutException('AI response timed out');
+        },
+      );
+
+      // Handle function calls if present
+      if (response.functionCalls.isNotEmpty) {
+        final functionResponses = <FunctionResponse>[];
+        for (final call in response.functionCalls) {
+          // Simplified function call handling
+          final result = 'Function call result for ${call.name}';
+          functionResponses.add(FunctionResponse(call.name, {'result': result}));
+        }
+        response = await chatSession.sendMessage(Content.functionResponses(functionResponses));
+      }
+
+      // Get response text
+      final responseText = response.text ?? '';
+      Logger.d('AI response length: ${responseText.length}', tag: 'GeminiAI');
+
+      // Track token usage
+      final inputTokens = response.usageMetadata?.promptTokenCount ?? 0;
+      final outputTokens = response.usageMetadata?.candidatesTokenCount ?? 0;
+      final totalTokens = inputTokens + outputTokens;
+      
+      // Calculate cost and track tokens
+      const inputCost = 0.30 / 1000000; // Gemini 2.5 Flash: $0.30 per 1M input tokens
+      const outputCost = 2.50 / 1000000; // Gemini 2.5 Flash: $2.50 per 1M output tokens
+      final cost = (inputTokens * inputCost) + (outputTokens * outputCost);
+      
+      TokenTrackingService().addUsage(
+        promptTokens: inputTokens,
+        completionTokens: outputTokens,
+        cost: cost,
+      );
+
+      // Update session conversation history
+      hiveSession.updateConversation(
+        userMessage: Content.text(userMessage),
+        aiResponse: Content.text(responseText),
+        tokensUsed: totalTokens,
+      );
+
+      // Save session with debounced approach
+      _debouncedSaveSession(hiveSession);
+
+      // Parse response into structured message
+      final message = AIResponseParser.parseResponse(
+        sessionId: sessionId,
+        aiResponse: responseText,
+        tokenCount: totalTokens,
+      );
+
+      Logger.d('Generated message type: ${message.type}', tag: 'GeminiAI');
+      Logger.d('Message has itinerary: ${message.hasItinerary}', tag: 'GeminiAI');
+
+      // If message contains an itinerary, update the session's tripContext
+      if (message.hasItinerary && message.itinerary != null) {
+        hiveSession.tripContext['itinerary_title'] = message.itinerary!.title;
+        hiveSession.tripContext['duration_days'] = message.itinerary!.durationDays;
+        hiveSession.tripContext['start_date'] = message.itinerary!.startDate;
+        hiveSession.tripContext['end_date'] = message.itinerary!.endDate;
+        
+        Logger.d('Updated session tripContext with itinerary_title: ${message.itinerary!.title}', tag: 'GeminiAI');
+        Logger.d('Full tripContext: ${hiveSession.tripContext}', tag: 'GeminiAI');
+        
+        // Save the session again with updated tripContext
+        _debouncedSaveSession(hiveSession);
+      }
+
+      return message;
+      
+    } on SocketException catch (e) {
+      Logger.e('Network connection error: $e', tag: 'GeminiAI');
+      throw AIAgentException('Network connection failed. Please check your internet connection and try again.');
+    } on TimeoutException catch (e) {
+      Logger.e('Request timeout error: $e', tag: 'GeminiAI');
+      throw AIAgentException('Request timed out. Please try again with a simpler request.');
+    } catch (e) {
+      Logger.e('Error generating message response: $e', tag: 'GeminiAI');
+      
+      // Handle HandshakeException and certificate errors
+      final errorString = e.toString().toLowerCase();
+      if (errorString.contains('handshakeexception') ||
+          errorString.contains('certificate_verify_failed') ||
+          errorString.contains('certificate')) {
+        throw AIAgentException('Network security error. Please check your internet connection and try again.');
+      }
+      
+      // Handle other network-related errors
+      if (errorString.contains('failed host lookup') || 
+          errorString.contains('socketexception') || 
+          errorString.contains('network') ||
+          errorString.contains('connection')) {
+        throw AIAgentException('Network connection failed. Please check your internet connection and try again.');
+      }
+      
+      // Generic error
+      throw AIAgentException('Oops! The LLM failed to generate answer. Please regenerate.');
+    }
+  }
+
   @override
   Future<ItineraryModel> generateItinerary({
     required String userPrompt,
@@ -263,69 +388,111 @@ IMPORTANT: Create a complete trip plan based on the user's request and preferenc
         Logger.d('Response end (200 chars): ...${responseText.substring(responseText.length - 200)}', tag: 'HiveGeminiAI');
       }
 
-      // Parse response
-      final itineraryJson = _extractItineraryFromResponse(responseText);
-      Logger.d('Parsed itinerary JSON: ${itineraryJson.keys}', tag: 'HiveGeminiAI');
-      
-      if (!validateItinerarySchema(itineraryJson)) {
-        Logger.e('Schema validation failed for itinerary', tag: 'HiveGeminiAI');
-        throw Exception('Generated itinerary does not match required schema');
+      // Parse response - check for follow-up questions first
+      try {
+        final itineraryJson = _extractItineraryFromResponse(responseText);
+        Logger.d('Parsed itinerary JSON: ${itineraryJson.keys}', tag: 'HiveGeminiAI');
+        
+        if (!validateItinerarySchema(itineraryJson)) {
+          Logger.e('Schema validation failed for itinerary', tag: 'HiveGeminiAI');
+          throw Exception('Generated itinerary does not match required schema');
+        }
+        
+        Logger.d('Schema validation passed, creating ItineraryModel', tag: 'HiveGeminiAI');
+
+        final itinerary = ItineraryModel.fromJson(itineraryJson);
+
+        // Update session
+        final tokensUsed = _estimateTokens(fullPrompt) + _estimateTokens(response.text ?? '');
+        
+        // Extract trip context for better home page display
+        hiveSession.extractTripContext(userPrompt);
+        hiveSession.tripContext['itinerary_title'] = itinerary.title;
+        hiveSession.tripContext['duration_days'] = itinerary.durationDays;
+        hiveSession.tripContext['start_date'] = itinerary.startDate;
+        hiveSession.tripContext['end_date'] = itinerary.endDate;
+        
+        Logger.d('Updated session tripContext with itinerary_title: ${itinerary.title}', tag: 'HiveGeminiAI');
+        Logger.d('Full tripContext: ${hiveSession.tripContext}', tag: 'HiveGeminiAI');
+
+        hiveSession.updateConversation(
+          userMessage: Content.text(userPrompt),
+          aiResponse: Content.model([TextPart(response.text ?? '')]),
+          tokensUsed: tokensUsed,
+          tokensSavedFromReuse: 0,
+        );
+
+        // Track usage
+        final promptTokens = _estimateTokens(fullPrompt);
+        final completionTokens = _estimateTokens(response.text ?? '');
+        
+        _tokenUsage.addUsage(
+          promptTokens: promptTokens,
+          completionTokens: completionTokens,
+        );
+
+        // Track globally for cost awareness (Gemini 2.5 Flash pricing)
+        const inputCostPer1M = 0.30;
+        const outputCostPer1M = 2.50;
+        final cost = (promptTokens / 1000000) * inputCostPer1M + 
+                     (completionTokens / 1000000) * outputCostPer1M;
+        
+        TokenTrackingService().addUsage(
+          promptTokens: promptTokens,
+          completionTokens: completionTokens,
+          cost: cost,
+        );
+
+        // Save session to Hive (immediately for important updates)
+        await _storage.saveSession(hiveSession);
+        Logger.d('Session saved immediately for itinerary generation', tag: 'HiveGeminiAI');
+
+        // Save itinerary to Hive
+        final hiveItinerary = _convertToHiveItinerary(itinerary);
+        await _storage.saveItinerary(hiveItinerary);
+
+        return itinerary;
+        
+      } on FollowUpQuestionException catch (e) {
+        // AI asked a follow-up question instead of generating itinerary
+        Logger.d('AI asked follow-up question: ${e.question}', tag: 'HiveGeminiAI');
+        
+        // Still track token usage for the follow-up question
+        final promptTokens = _estimateTokens(fullPrompt);
+        final completionTokens = _estimateTokens(response.text ?? '');
+        
+        _tokenUsage.addUsage(
+          promptTokens: promptTokens,
+          completionTokens: completionTokens,
+        );
+
+        // Track globally for cost awareness
+        const inputCostPer1M = 0.30;
+        const outputCostPer1M = 2.50;
+        final cost = (promptTokens / 1000000) * inputCostPer1M + 
+                     (completionTokens / 1000000) * outputCostPer1M;
+        
+        TokenTrackingService().addUsage(
+          promptTokens: promptTokens,
+          completionTokens: completionTokens,
+          cost: cost,
+        );
+
+        // Update session with the follow-up question
+        hiveSession.updateConversation(
+          userMessage: Content.text(userPrompt),
+          aiResponse: Content.model([TextPart(response.text ?? '')]),
+          tokensUsed: promptTokens + completionTokens,
+          tokensSavedFromReuse: 0,
+        );
+
+        // Save session to preserve the conversation
+        await _storage.saveSession(hiveSession);
+        Logger.d('Session saved with follow-up question', tag: 'HiveGeminiAI');
+
+        // Re-throw the exception so MessageBasedChatBloc can handle it
+        rethrow;
       }
-      
-      Logger.d('Schema validation passed, creating ItineraryModel', tag: 'HiveGeminiAI');
-
-      final itinerary = ItineraryModel.fromJson(itineraryJson);
-
-      // Update session
-      final tokensUsed = _estimateTokens(fullPrompt) + _estimateTokens(response.text ?? '');
-      
-      // Extract trip context for better home page display
-      hiveSession.extractTripContext(userPrompt);
-      hiveSession.tripContext['itinerary_title'] = itinerary.title;
-      hiveSession.tripContext['duration_days'] = itinerary.durationDays;
-      hiveSession.tripContext['start_date'] = itinerary.startDate;
-      hiveSession.tripContext['end_date'] = itinerary.endDate;
-      
-      Logger.d('Updated session tripContext with itinerary_title: ${itinerary.title}', tag: 'HiveGeminiAI');
-      Logger.d('Full tripContext: ${hiveSession.tripContext}', tag: 'HiveGeminiAI');
-      
-      hiveSession.updateConversation(
-        userMessage: Content.text(userPrompt),
-        aiResponse: Content.model([TextPart(response.text ?? '')]),
-        tokensUsed: tokensUsed,
-        tokensSavedFromReuse: 0,
-      );
-
-      // Track usage
-      final promptTokens = _estimateTokens(fullPrompt);
-      final completionTokens = _estimateTokens(response.text ?? '');
-      
-      _tokenUsage.addUsage(
-        promptTokens: promptTokens,
-        completionTokens: completionTokens,
-      );
-
-      // Track globally for cost awareness (Gemini 2.5 Flash pricing)
-      const inputCostPer1M = 0.30;
-      const outputCostPer1M = 2.50;
-      final cost = (promptTokens / 1000000) * inputCostPer1M + 
-                   (completionTokens / 1000000) * outputCostPer1M;
-      
-      TokenTrackingService().addUsage(
-        promptTokens: promptTokens,
-        completionTokens: completionTokens,
-        cost: cost,
-      );
-
-      // Save session to Hive (immediately for important updates)
-      await _storage.saveSession(hiveSession);
-      Logger.d('Session saved immediately for itinerary generation', tag: 'HiveGeminiAI');
-
-      // Save itinerary to Hive
-      final hiveItinerary = _convertToHiveItinerary(itinerary);
-      await _storage.saveItinerary(hiveItinerary);
-
-      return itinerary;
       
     } on SocketException catch (e) {
       Logger.e('Network error - Failed to generate itinerary: $e', tag: 'HiveGeminiAI');
@@ -416,70 +583,92 @@ IMPORTANT: Create a complete trip plan based on the user's request and preferenc
 
       final responseText = response.text ?? '';
       
-      // Check if this is a follow-up question
-      if (responseText.startsWith('FOLLOWUP:')) {
-        final followUpQuestion = responseText.substring(9).trim();
-        Logger.d('AI asked follow-up question: $followUpQuestion', tag: 'HiveGeminiAI');
-        
-        // Save the conversation but don't try to parse as itinerary
-        final tokensUsed = _estimateTokens(userPrompt) + _estimateTokens(responseText);
+      // Calculate savings
+      final tokensUsed = _estimateTokens(userPrompt) + _estimateTokens(responseText);
+      final tokensSaved = _calculateTokensSaved(hiveSession);
+
+      // Calculate token usage (for both success and follow-up question cases)
+      final promptTokens = _estimateTokens(userPrompt);
+      final completionTokens = _estimateTokens(responseText);
+
+      // Parse refined itinerary - check for follow-up questions first
+      try {
+        final refinedJson = _extractItineraryFromResponse(responseText);
+        final refinedItinerary = ItineraryModel.fromJson(refinedJson);
+
+        // Update session
         hiveSession.updateConversation(
           userMessage: Content.text(userPrompt),
           aiResponse: Content.model([TextPart(responseText)]),
           tokensUsed: tokensUsed,
-          tokensSavedFromReuse: 0,
+          tokensSavedFromReuse: tokensSaved,
+        );
+
+        // Track usage with savings
+        _tokenUsage.addUsage(
+          promptTokens: promptTokens,
+          completionTokens: completionTokens,
+          tokensSaved: tokensSaved,
+        );
+
+        // Track globally for cost awareness (Gemini 2.5 Flash pricing)
+        const inputCostPer1M = 0.30;
+        const outputCostPer1M = 2.50;
+        final cost = (promptTokens / 1000000) * inputCostPer1M + 
+                     (completionTokens / 1000000) * outputCostPer1M;
+        
+        TokenTrackingService().addUsage(
+          promptTokens: promptTokens,
+          completionTokens: completionTokens,
+          cost: cost,
+        );
+
+        // Save session
+        _debouncedSaveSession(hiveSession);
+
+        // Save refined itinerary
+        final hiveItinerary = _convertToHiveItinerary(refinedItinerary);
+        await _storage.saveItinerary(hiveItinerary);
+
+        return refinedItinerary;
+        
+      } on FollowUpQuestionException catch (e) {
+        // AI asked a follow-up question during refinement
+        Logger.d('AI asked follow-up question during refinement: ${e.question}', tag: 'HiveGeminiAI');
+        
+        // Still track token usage and update conversation
+        hiveSession.updateConversation(
+          userMessage: Content.text(userPrompt),
+          aiResponse: Content.model([TextPart(responseText)]),
+          tokensUsed: tokensUsed,
+          tokensSavedFromReuse: tokensSaved,
+        );
+        
+        // Track usage with savings
+        _tokenUsage.addUsage(
+          promptTokens: promptTokens,
+          completionTokens: completionTokens,
+          tokensSaved: tokensSaved,
+        );
+
+        // Track globally for cost awareness
+        const inputCostPer1M = 0.30;
+        const outputCostPer1M = 2.50;
+        final cost = (promptTokens / 1000000) * inputCostPer1M + 
+                     (completionTokens / 1000000) * outputCostPer1M;
+        
+        TokenTrackingService().addUsage(
+          promptTokens: promptTokens,
+          completionTokens: completionTokens,
+          cost: cost,
         );
         
         // Save session
         _debouncedSaveSession(hiveSession);
         
-        // Throw a special exception that the chat system can handle
-        throw FollowUpQuestionException(followUpQuestion);
+        // Re-throw the exception so MessageBasedChatBloc can handle it
+        rethrow;
       }
-
-      // Calculate savings
-      final tokensUsed = _estimateTokens(userPrompt) + _estimateTokens(responseText);
-      final tokensSaved = _calculateTokensSaved(hiveSession);
-
-      // Parse refined itinerary
-      final refinedJson = _extractItineraryFromResponse(responseText);
-      final refinedItinerary = ItineraryModel.fromJson(refinedJson);
-
-      // Update session
-      hiveSession.updateConversation(
-        userMessage: Content.text(userPrompt),
-        aiResponse: Content.model([TextPart(responseText)]),
-        tokensUsed: tokensUsed,
-        tokensSavedFromReuse: tokensSaved,
-      );
-
-      // Track usage with savings
-      final promptTokens = _estimateTokens(userPrompt);
-      final completionTokens = _estimateTokens(responseText);
-      
-      _tokenUsage.addUsage(
-        promptTokens: promptTokens,
-        completionTokens: completionTokens,
-        tokensSaved: tokensSaved,
-      );
-
-      // Track globally for cost awareness (Gemini 2.5 Flash pricing)
-      const inputCostPer1M = 0.30;
-      const outputCostPer1M = 2.50;
-      final cost = (promptTokens / 1000000) * inputCostPer1M + 
-                   (completionTokens / 1000000) * outputCostPer1M;
-      
-      TokenTrackingService().addUsage(
-        promptTokens: promptTokens,
-        completionTokens: completionTokens,
-        cost: cost,
-      );
-
-      // Save session to Hive
-      _debouncedSaveSession(hiveSession);
-
-      Logger.d('Successfully refined itinerary, saved $tokensSaved tokens', tag: 'HiveGeminiAI');
-      return refinedItinerary;
       
     } catch (e) {
       if (e is FollowUpQuestionException) {
@@ -858,14 +1047,16 @@ SEARCH STRATEGY:
 - For each major destination, search for "restaurants in [location]" or "best restaurants [location]"
 - For accommodations, search "hotels near [attraction name]" or "best hotels [location]"
 - For activities, search "[activity] in [location] [year]" to get current information
-- Always include the year (2025) in searches for current information
+- Always include the year (2025 or later) in searches for current information
 
 RESPONSE TYPES:
 1. ITINERARY RESPONSE: When you have information to create/modify an itinerary, respond with ONLY the JSON object.
 2. FOLLOW-UP QUESTION: When you need more information from the user, start your response with "FOLLOWUP: " followed by your question.
 
+RESPONSE BEHAVIOR:
+1. FIRST REQUEST = IMMEDIATE ITINERARY: Always create a itinerary using web search data for the first chat with the user(if no history is present), even with basic prompts like "Plan a trip to Tokyo" by using intelligent assumptions and landmark famous attractions
+
 EXAMPLES:
-- User: "Change dates" → Response: "FOLLOWUP: What are the new start and end dates for your trip?"
 - User: "Make it cheaper" → Response: "FOLLOWUP: What's your preferred budget range per day?"
 - User: "Add more restaurants" → Response: "FOLLOWUP: What type of cuisine are you interested in?"
 - User: "Plan a trip to Paris for 3 days" → Response: {JSON itinerary}
@@ -876,7 +1067,7 @@ CRITICAL CONSTRAINTS:
 - Maximum 4-5 activities per day
 - Keep activity descriptions brief 
 - Use short, precise summaries
-
+- Make sure the FOLLOWUP questions are clear and specific and ask one or two questions at a time not a list of many questions along with your suggestions for the follow up questions answers based on the location,culture and context of the trip
 EXACT JSON schema required:
 {
   "title": "Trip Title",
@@ -923,6 +1114,13 @@ Remember: If you need clarification, use "FOLLOWUP: " prefix. If you can create/
       // Clean the response - remove any leading/trailing whitespace
       final cleanedResponse = response.trim();
       Logger.d('Raw AI response start: ${cleanedResponse.substring(0, min(500, cleanedResponse.length))}', tag: 'HiveGeminiAI');
+
+      // CHECK FOR FOLLOW-UP QUESTIONS FIRST
+      if (cleanedResponse.toUpperCase().startsWith('FOLLOWUP:')) {
+        final question = cleanedResponse.substring(9).trim(); // Remove "FOLLOWUP:" prefix
+        Logger.d('Detected follow-up question: $question', tag: 'HiveGeminiAI');
+        throw FollowUpQuestionException(question);
+      }
 
       // First try to find JSON block with triple backticks (most common case)
       final codeBlockMatch = RegExp(r'```(?:json)?\s*(.*?)\s*```', dotAll: true).firstMatch(response);
@@ -1003,6 +1201,9 @@ Remember: If you need clarification, use "FOLLOWUP: " prefix. If you can create/
       
       return _createFallbackItinerary(response);
       
+    } on FollowUpQuestionException {
+      // Re-throw follow-up questions - don't create fallback itinerary
+      rethrow;
     } catch (e) {
       Logger.e('JSON parsing failed completely: $e', tag: 'HiveGeminiAI');
       return _createFallbackItinerary(response);
@@ -1188,135 +1389,10 @@ class AIAgentServiceFactory {
     String? googleSearchEngineId,
     String? bingSearchApiKey,
   }) {
-    if (geminiApiKey.isEmpty) {
-      return HiveMockAIAgentService();
-    }
     return GeminiAIService(
       apiKey: geminiApiKey,
       googleSearchApiKey: googleSearchApiKey,
       googleSearchEngineId: googleSearchEngineId,
-      bingSearchApiKey: bingSearchApiKey,
     );
   }
-}
-
-/// **Mock Service**
-class HiveMockAIAgentService implements AIAgentService {
-  final TokenUsageStats _tokenUsage = TokenUsageStats();
-  final HiveStorageService _storage = HiveStorageService.instance;
-
-  @override
-  Future<ItineraryModel> generateItinerary({
-    required String userPrompt,
-    String? userId,
-    String? sessionId,
-  }) async {
-    await Future.delayed(const Duration(seconds: 2));
-    
-    final sampleItinerary = ItineraryModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: 'Mock Trip - ${userPrompt.split(' ').take(3).join(' ')}',
-      startDate: '2025-04-10',
-      endDate: '2025-04-12',
-      days: [
-        DayPlanModel(
-          date: '2025-04-10',
-          summary: 'Arrival and City Exploration',
-          items: [
-            ActivityItemModel(
-              time: '09:00',
-              activity: 'Arrive at destination',
-              location: '35.6762,139.6503',
-            ),
-          ],
-        ),
-      ],
-      createdAt: DateTime.now(),
-    );
-    
-    return sampleItinerary;
-  }
-
-  @override
-  Future<ItineraryModel> refineItinerary({
-    required String userPrompt,
-    required String sessionId,
-    String? userId,
-  }) async {
-    await Future.delayed(const Duration(seconds: 1));
-    return await generateItinerary(userPrompt: userPrompt, userId: userId, sessionId: sessionId);
-  }
-
-  @override
-  Stream<String> streamItineraryGeneration({
-    required String userPrompt,
-    String? userId,
-    String? sessionId,
-  }) async* {
-    final message = 'Generating your itinerary for: $userPrompt\n\nPlease wait...';
-    for (int i = 0; i < message.length; i++) {
-      yield message[i];
-      await Future.delayed(const Duration(milliseconds: 50));
-    }
-  }
-
-  @override
-  Future<String> getOrCreateSession({
-    required String userId,
-    String? existingSessionId,
-  }) async {
-    if (existingSessionId != null) {
-      final session = await _storage.getSession(existingSessionId);
-      if (session != null) return existingSessionId;
-    }
-    
-    final session = HiveSessionState.create(userId);
-    await _storage.saveSession(session);
-    return session.sessionId;
-  }
-
-  @override
-  Future<SessionState?> getSession(String sessionId) async {
-    final hiveSession = await _storage.getSession(sessionId);
-    if (hiveSession != null) {
-      return SessionState(
-        sessionId: hiveSession.sessionId,
-        userId: hiveSession.userId,
-        createdAt: hiveSession.createdAt,
-        lastUsed: hiveSession.lastUsed,
-        conversationHistory: hiveSession.geminiConversationHistory,
-        userPreferences: Map<String, dynamic>.from(hiveSession.userPreferences),
-        tripContext: Map<String, dynamic>.from(hiveSession.tripContext),
-        tokensSaved: hiveSession.tokensSaved,
-        messagesInSession: hiveSession.messagesInSession,
-        estimatedCostSavings: hiveSession.estimatedCostSavings,
-        refinementCount: hiveSession.refinementCount,
-        isActive: hiveSession.isActive,
-      );
-    }
-    return null;
-  }
-
-  @override
-  Future<void> clearSession(String sessionId) async {
-    await _storage.deleteSession(sessionId);
-  }
-
-  @override
-  Future<Map<String, dynamic>> getSessionMetrics(String userId) async {
-    final sessions = await _storage.getUserSessions(userId);
-    return {
-      'total_sessions': sessions.length,
-      'active_sessions': sessions.length,
-      'total_tokens_saved': 0,
-      'total_cost_savings': 0.0,
-      'session_reuse_rate': 0.0,
-    };
-  }
-
-  @override
-  TokenUsageStats get tokenUsage => _tokenUsage;
-
-  @override
-  bool validateItinerarySchema(Map<String, dynamic> json) => true;
 }

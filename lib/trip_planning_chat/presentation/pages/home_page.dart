@@ -476,7 +476,14 @@ class _HomePageState extends State<HomePage> {
                         arguments: {
                           'sessionId': trip.sessionId,
                         },
-                      );
+                      ).then((_) {
+                        // Refresh the trip list when user returns from chat
+                        Logger.d('Returned from chat session, refreshing trip list', tag: 'HomePage');
+                        // Add a small delay to ensure any new messages are fully saved
+                        Future.delayed(const Duration(milliseconds: 300), () {
+                          _loadSavedTrips();
+                        });
+                      });
                     },
                     onDelete: () {
                       // Show confirmation dialog before deleting

@@ -108,20 +108,47 @@ class SessionState {
   void extractTripContext(String userMessage) {
     final lowerMessage = userMessage.toLowerCase();
 
-    if (lowerMessage.contains('to ') || lowerMessage.contains('visit ')) {
-      final destinationMatch = RegExp(r'(?:to|visit)\s+([a-zA-Z\s]+?)(?:\s|$|,)').firstMatch(lowerMessage);
-      if (destinationMatch != null) {
-        tripContext['destination'] = destinationMatch.group(1)?.trim();
+    // Extract destination
+    if (lowerMessage.contains('to ') || lowerMessage.contains('visit ') || lowerMessage.contains('in ')) {
+      // Try multiple patterns to capture destinations
+      final patterns = [
+        RegExp(r'(?:to|visit)\s+([a-zA-Z\s,]+?)(?:\s+for|\s+in|\s*,|\s*\.|$)', caseSensitive: false),
+        RegExp(r'trip\s+to\s+([a-zA-Z\s,]+?)(?:\s+for|\s+in|\s*,|\s*\.|$)', caseSensitive: false),
+        RegExp(r'in\s+([a-zA-Z\s,]+?)(?:\s+for|\s+during|\s*,|\s*\.|$)', caseSensitive: false),
+      ];
+      
+      for (final pattern in patterns) {
+        final match = pattern.firstMatch(userMessage);
+        if (match != null) {
+          final destination = match.group(1)?.trim();
+          if (destination != null && destination.isNotEmpty) {
+            tripContext['destination'] = destination;
+            break;
+          }
+        }
       }
     }
 
-    final durationMatch = RegExp(r'(\d+)\s*(day|week|month)').firstMatch(lowerMessage);
+    // Extract duration
+    final durationMatch = RegExp(r'(\d+)\s*(day|week|month)', caseSensitive: false).firstMatch(lowerMessage);
     if (durationMatch != null) {
       final number = int.parse(durationMatch.group(1)!);
       final unit = durationMatch.group(2)!;
       tripContext['duration_number'] = number;
       tripContext['duration_unit'] = unit;
+      
+      // Create a readable duration string
+      final pluralUnit = number > 1 ? '${unit}s' : unit;
+      tripContext['duration'] = '$number $pluralUnit';
     }
+    
+    // Extract travel type/style
+    if (lowerMessage.contains('solo')) tripContext['travel_style'] = 'solo';
+    if (lowerMessage.contains('family')) tripContext['travel_style'] = 'family';
+    if (lowerMessage.contains('couple')) tripContext['travel_style'] = 'couple';
+    if (lowerMessage.contains('business')) tripContext['travel_style'] = 'business';
+    if (lowerMessage.contains('budget')) tripContext['budget_type'] = 'budget';
+    if (lowerMessage.contains('luxury')) tripContext['budget_type'] = 'luxury';
   }
 
   String buildRefinementContext() {

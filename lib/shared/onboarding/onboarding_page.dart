@@ -222,43 +222,6 @@ class _OnboardingScreenViewState extends State<OnboardingScreenView> {
                         ),
                       ),
                     ),
-                    
-                    const SizedBox(height: 16),
-                    
-                    // Session Persistence Demo Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.pushNamed(context, AppRoutes.sessionDemo);
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.primaryGreen,
-                          side: BorderSide(color: AppColors.primaryGreen, width: 2),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppDimensions.paddingXL,
-                            vertical: AppDimensions.paddingM,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-                          ),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.account_tree, size: 20),
-                            SizedBox(width: 8),
-                            Text(
-                              '🔄 Session Persistence Demo',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),

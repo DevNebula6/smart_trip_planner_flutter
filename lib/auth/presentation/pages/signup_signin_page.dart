@@ -5,6 +5,7 @@ import 'package:smart_trip_planner_flutter/auth/presentation/bloc/auth_bloc.dart
 import 'package:smart_trip_planner_flutter/auth/presentation/bloc/auth_event.dart';
 import 'package:smart_trip_planner_flutter/auth/presentation/bloc/auth_state.dart';
 import 'package:smart_trip_planner_flutter/core/constants/app_styles.dart';
+import 'package:smart_trip_planner_flutter/shared/navigation/app_router.dart';
 
 enum AuthMode { signUp, signIn }
 
@@ -80,7 +81,7 @@ class _SignUpSignInPageState extends State<SignUpSignInPage>
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<AuthBloc, AuthState>(
+    return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
         // Show success message for successful registration
         if (state is AuthStateLoggedIn && _authMode == AuthMode.signUp) {
@@ -139,7 +140,26 @@ class _SignUpSignInPageState extends State<SignUpSignInPage>
           );
         }
       },
-      child: Scaffold(
+    builder: (context, state) {
+      if (state is AuthStateLoggedIn) {
+        // Navigate to home page on successful login
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            AppRoutes.home, (route) => false
+          );
+        });
+        // Return a loading widget while navigation is happening
+        return const Scaffold(
+          backgroundColor: AppColors.backgroundColor,
+          body: Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
+            ),
+          ),
+        );
+      }
+      // Default return for all other states including AuthStateLoggedOut
+      return Scaffold(
         backgroundColor: AppColors.backgroundColor,
         body: SafeArea(
           child: SingleChildScrollView(
@@ -168,7 +188,8 @@ class _SignUpSignInPageState extends State<SignUpSignInPage>
             ),
           ),
         ),
-      ),
+      );
+    }
     );
   }
 

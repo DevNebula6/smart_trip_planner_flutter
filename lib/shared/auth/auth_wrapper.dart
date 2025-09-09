@@ -19,6 +19,8 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
+        print('AuthWrapper: State changed to: ${state.runtimeType}');
+        
         // Handle any side effects like showing snackbars
         if (state is AuthStateLoggedOut && state.exception != null) {
           _showErrorSnackBar(context, state.exception!);
@@ -28,8 +30,7 @@ class AuthWrapper extends StatelessWidget {
         }
       },
       builder: (context, state) {
-        // Debug logging for state changes
-        print('AuthWrapper: Current state: ${state.runtimeType}');
+        print('AuthWrapper: Building UI for state: ${state.runtimeType}');
         if (state is AuthStateLoggedIn) {
           print('AuthWrapper: User is logged in: ${state.user.email}');
         }
@@ -41,10 +42,12 @@ class AuthWrapper extends StatelessWidget {
 
         // Handle different auth states
         if (state is AuthStateLoggedIn) {
+          print('AuthWrapper: Navigating to HomePage for user: ${state.user.email}');
           return const HomePage();
         }
 
         if (state is AuthStateRegistering) {
+          print('AuthWrapper: Navigating to auth screens');
           return const SignUpSignInPage();
         }
 
