@@ -3,7 +3,11 @@
 A sophisticated Flutter application that leverages AI to create personalized travel itineraries through natural language conversations, built with Clean Architecture and modern Flutter practices.
 
 ## 📱 Demo Video
-> **[https://drive.google.com/file/d/1hrgJmOF4odQADNYUMW061fIUFFf7E9CZ/view?usp=sharing]**
+> **https://drive.google.com/file/d/1hrgJmOF4odQADNYUMW061fIUFFf7E9CZ/view?usp=sharing**
+
+##  APK Download
+> **[Download](https://drive.google.com/file/d/1lijU2KuqDAXNwvwN53-Ur2B2ufJbZ4BI/view?usp=drive_link)**
+
 
 ## ✨ Key Features
 
