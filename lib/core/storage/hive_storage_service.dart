@@ -1,16 +1,18 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:smart_trip_planner_flutter/core/storage/hive_models.dart';
 import 'package:smart_trip_planner_flutter/core/utils/helpers.dart';
+import 'package:smart_trip_planner_flutter/core/constants/app_constants.dart';
 import 'dart:async';
 
 /// **Hive Storage Service**
 /// 
-/// Centralized storage service using Hive for
+/// Centralized storage service using Hive for persistent local storage
 
 
 class HiveStorageService {
-  static HiveStorageService? _instance;
-  static const int _maxRetries = 3;
+  // Thread-safe singleton using late final
+  static late final HiveStorageService instance = HiveStorageService._();
+  static const int _maxRetries = AppConstants.storageMaxRetries;
   
   // Box names
   static const String _sessionsBoxName = 'sessions';
@@ -26,12 +28,8 @@ class HiveStorageService {
 
   bool _isInitialized = false;
 
+  // Private constructor for singleton pattern
   HiveStorageService._();
-
-  static HiveStorageService get instance {
-    _instance ??= HiveStorageService._();
-    return _instance!;
-  }
 
   /// Initialize Hive and register adapters
   Future<void> initialize() async {

@@ -31,6 +31,9 @@ class HiveItineraryModel extends HiveObject {
   
   @HiveField(7)
   DateTime? updatedAt;
+  
+  @HiveField(8)
+  String? sessionId; // Link to the session that created this itinerary
 
   HiveItineraryModel({
     required this.id,
@@ -41,6 +44,7 @@ class HiveItineraryModel extends HiveObject {
     this.originalPrompt,
     this.createdAt,
     this.updatedAt,
+    this.sessionId,
   });
 
   /// Convert to JSON for API responses (maintains assignment spec)

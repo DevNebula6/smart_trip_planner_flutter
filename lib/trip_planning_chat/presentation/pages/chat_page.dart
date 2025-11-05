@@ -8,27 +8,27 @@ import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../../trip_planning_chat/data/models/itinerary_models.dart';
 
-/// **Enhanced Chat Page - Message Based**
+/// ** Chat Page - Message Based**
 /// 
 /// Uses the new message-based approach where each message can contain:
 /// - Text only (follow-up questions, responses)
 /// - Itinerary only 
 /// - Both text and itinerary combined
-class EnhancedChatPage extends StatefulWidget {
+class ChatPage extends StatefulWidget {
   final String? initialPrompt;
   final String? sessionId;
 
-  const EnhancedChatPage({
+  const ChatPage({
     super.key,
     this.initialPrompt,
     this.sessionId,
   });
 
   @override
-  State<EnhancedChatPage> createState() => _EnhancedChatPageState();
+  State<ChatPage> createState() => _ChatPageState();
 }
 
-class _EnhancedChatPageState extends State<EnhancedChatPage> {
+class _ChatPageState extends State<ChatPage> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   late MessageBasedChatBloc _chatBloc;

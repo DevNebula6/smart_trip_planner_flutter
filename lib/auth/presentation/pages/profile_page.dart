@@ -27,7 +27,12 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _refreshTokenStats() async {
     // Re-initialize to get latest stats from storage
     await _tokenTracking.init();
-    if (mounted) setState(() {});
+    if (mounted) {
+      // Force rebuild to reflect updated token stats
+      setState(() {
+        // Token tracking service has been reinitialized
+      });
+    }
   }
 
   @override
@@ -355,11 +360,18 @@ class _ProfilePageState extends State<ProfilePage> {
             TextButton(
               onPressed: () async {
                 await _tokenTracking.reset();
-                Navigator.of(context).pop();
-                setState(() {}); // Refresh the UI
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Usage stats reset successfully')),
-                );
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                  // Force rebuild to show reset stats
+                  if (mounted) {
+                    setState(() {
+                      // Token stats have been reset
+                    });
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Usage stats reset successfully')),
+                  );
+                }
               },
               child: const Text(
                 'Reset',

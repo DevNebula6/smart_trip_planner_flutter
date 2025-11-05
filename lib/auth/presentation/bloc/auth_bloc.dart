@@ -112,12 +112,36 @@ class AuthBloc extends Bloc<AuthEvents, AuthState> {
             isLoading: false,
           ));
         }
+      } on WeakPasswordAuthException catch (e) {
+        Logger.e('AuthBloc: Weak password error: $e', tag: 'AuthBloc');
+        emit(AuthStateRegistering(
+          exception: e,
+          isLoading: false,
+        ));
+      } on EmailAlreadyInUseAuthException catch (e) {
+        Logger.e('AuthBloc: Email already in use: $e', tag: 'AuthBloc');
+        emit(AuthStateRegistering(
+          exception: e,
+          isLoading: false,
+        ));
+      } on InvalidEmailAuthException catch (e) {
+        Logger.e('AuthBloc: Invalid email error: $e', tag: 'AuthBloc');
+        emit(AuthStateRegistering(
+          exception: e,
+          isLoading: false,
+        ));
+      } on GenericAuthException catch (e) {
+        Logger.e('AuthBloc: Generic auth error: $e', tag: 'AuthBloc');
+        emit(AuthStateRegistering(
+          exception: e,
+          isLoading: false,
+        ));
       } on Exception catch (e) {
-        Logger.e('AuthBloc: Registration error: $e', tag: 'AuthBloc');
-        emit( AuthStateRegistering(
-        exception: e,
-        isLoading: false,
-      ));
+        Logger.e('AuthBloc: Unexpected registration error: $e', tag: 'AuthBloc');
+        emit(AuthStateRegistering(
+          exception: GenericAuthException(),
+          isLoading: false,
+        ));
       }
   });
   // initialize
@@ -208,10 +232,38 @@ class AuthBloc extends Bloc<AuthEvents, AuthState> {
             intendedView: AuthView.signIn,
           ));
         }
-      } on Exception catch (e) {
-        Logger.e('AuthBloc: Login error: $e', tag: 'AuthBloc');
+      } on InvalidCredentialAuthException catch (e) {
+        Logger.e('AuthBloc: Invalid credentials: $e', tag: 'AuthBloc');
         emit(AuthStateLoggedOut(
           exception: e,
+          isLoading: false,
+          intendedView: AuthView.signIn,
+        ));
+      } on UserNotFoundAuthException catch (e) {
+        Logger.e('AuthBloc: User not found: $e', tag: 'AuthBloc');
+        emit(AuthStateLoggedOut(
+          exception: e,
+          isLoading: false,
+          intendedView: AuthView.signIn,
+        ));
+      } on InvalidEmailAuthException catch (e) {
+        Logger.e('AuthBloc: Invalid email: $e', tag: 'AuthBloc');
+        emit(AuthStateLoggedOut(
+          exception: e,
+          isLoading: false,
+          intendedView: AuthView.signIn,
+        ));
+      } on GenericAuthException catch (e) {
+        Logger.e('AuthBloc: Generic auth error: $e', tag: 'AuthBloc');
+        emit(AuthStateLoggedOut(
+          exception: e,
+          isLoading: false,
+          intendedView: AuthView.signIn,
+        ));
+      } on Exception catch (e) {
+        Logger.e('AuthBloc: Unexpected login error: $e', tag: 'AuthBloc');
+        emit(AuthStateLoggedOut(
+          exception: GenericAuthException(),
           isLoading: false,
           intendedView: AuthView.signIn,
         ));

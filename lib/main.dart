@@ -46,7 +46,39 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String apiKey = dotenv.env['GEMINI_API_KEY']!; 
+    // Validate API key with proper null checking
+    final String? apiKey = dotenv.env['GEMINI_API_KEY'];
+    
+    if (apiKey == null || apiKey.isEmpty) {
+      return MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Configuration Error',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'GEMINI_API_KEY is missing from .env file.\n\n'
+                    'Please add your Gemini API key to the .env file:\n'
+                    'GEMINI_API_KEY=your_api_key_here',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     
     // Get web search API keys from environment
     String? googleSearchApiKey = dotenv.env['GOOGLE_SEARCH_API_KEY'];

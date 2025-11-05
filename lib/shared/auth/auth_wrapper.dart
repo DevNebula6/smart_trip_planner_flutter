@@ -7,6 +7,7 @@ import 'package:smart_trip_planner_flutter/auth/presentation/pages/signup_signin
 import 'package:smart_trip_planner_flutter/trip_planning_chat/presentation/pages/home_page.dart';
 import 'package:smart_trip_planner_flutter/shared/onboarding/onboarding_page.dart';
 import 'package:smart_trip_planner_flutter/core/constants/app_styles.dart';
+import 'package:smart_trip_planner_flutter/core/utils/helpers.dart';
 
 /// **Authentication Wrapper**
 /// 
@@ -19,7 +20,7 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
-        print('AuthWrapper: State changed to: ${state.runtimeType}');
+        Logger.d('State changed to: ${state.runtimeType}', tag: 'AuthWrapper');
         
         // Handle any side effects like showing snackbars
         if (state is AuthStateLoggedOut && state.exception != null) {
@@ -30,9 +31,9 @@ class AuthWrapper extends StatelessWidget {
         }
       },
       builder: (context, state) {
-        print('AuthWrapper: Building UI for state: ${state.runtimeType}');
+        Logger.d('Building UI for state: ${state.runtimeType}', tag: 'AuthWrapper');
         if (state is AuthStateLoggedIn) {
-          print('AuthWrapper: User is logged in: ${state.user.email}');
+          Logger.d('User is logged in: ${state.user.email}', tag: 'AuthWrapper');
         }
         
         // Show loading overlay if needed
@@ -42,12 +43,12 @@ class AuthWrapper extends StatelessWidget {
 
         // Handle different auth states
         if (state is AuthStateLoggedIn) {
-          print('AuthWrapper: Navigating to HomePage for user: ${state.user.email}');
+          Logger.d('Navigating to HomePage for user: ${state.user.email}', tag: 'AuthWrapper');
           return const HomePage();
         }
 
         if (state is AuthStateRegistering) {
-          print('AuthWrapper: Navigating to auth screens');
+          Logger.d('Navigating to auth screens', tag: 'AuthWrapper');
           return const SignUpSignInPage();
         }
 

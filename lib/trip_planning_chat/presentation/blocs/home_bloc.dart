@@ -132,33 +132,18 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       
       final hiveStorage = HiveStorageService.instance;
       
-      // First, get the session to find associated itinerary data
-      final session = await hiveStorage.getSession(event.sessionId);
+      // Delete associated itineraries efficiently using sessionId reference
+      final allItineraries = await hiveStorage.getAllItineraries();
       
-      if (session != null) {
-        // Find and delete associated itineraries
-        final allItineraries = await hiveStorage.getAllItineraries();
-        
-        // Look for itineraries that match this session based on timing and session ID
-        final sessionItineraries = allItineraries.where((itinerary) {
-          // Check if session was created around the same time as itinerary (within 5 minutes)
-          final sessionCreated = session.createdAt;
-          final itineraryCreated = itinerary.createdAt ?? DateTime(0);
-          final timeDiff = sessionCreated.difference(itineraryCreated).abs().inMinutes;
-          final isTimeMatch = timeDiff <= 5;
-          
-          // Check if session ID is mentioned in itinerary ID
-          final isIdMatch = itinerary.id.contains(session.sessionId.split('_').first) || 
-                           session.sessionId.contains(itinerary.id.split('_').first);
-          
-          return isTimeMatch || isIdMatch;
-        }).toList();
-        
-        // Delete all matching itineraries
-        for (final itinerary in sessionItineraries) {
-          Logger.d('Deleting associated itinerary: ${itinerary.id} (${itinerary.title})', tag: 'HomeBloc');
-          await hiveStorage.deleteItinerary(itinerary.id);
-        }
+      // Filter itineraries by sessionId for O(n) efficiency instead of complex matching
+      final sessionItineraries = allItineraries.where((itinerary) {
+        return itinerary.sessionId == event.sessionId;
+      }).toList();
+      
+      // Delete all matching itineraries
+      for (final itinerary in sessionItineraries) {
+        Logger.d('Deleting associated itinerary: ${itinerary.id} (${itinerary.title})', tag: 'HomeBloc');
+        await hiveStorage.deleteItinerary(itinerary.id);
       }
       
       // Delete from both AI service and Hive storage for completeness

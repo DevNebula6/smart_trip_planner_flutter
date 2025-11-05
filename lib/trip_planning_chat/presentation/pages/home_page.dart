@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_styles.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../shared/navigation/app_router.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
@@ -58,8 +59,11 @@ class _HomePageState extends State<HomePage> {
       // Refresh the trip list when user returns from chat
       Logger.d('Returned from chat, refreshing trip list', tag: 'HomePage');
       // Add a small delay to ensure session is fully saved
-      Future.delayed(const Duration(milliseconds: 500), () {
-        _loadSavedTrips();
+      Future.delayed(const Duration(milliseconds: AppConstants.uiRefreshDelayMs), () {
+        // Check if widget is still mounted before using context
+        if (mounted) {
+          _loadSavedTrips();
+        }
       });
     });
 
@@ -480,8 +484,11 @@ class _HomePageState extends State<HomePage> {
                         // Refresh the trip list when user returns from chat
                         Logger.d('Returned from chat session, refreshing trip list', tag: 'HomePage');
                         // Add a small delay to ensure any new messages are fully saved
-                        Future.delayed(const Duration(milliseconds: 300), () {
-                          _loadSavedTrips();
+                        Future.delayed(const Duration(milliseconds: AppConstants.shortUiRefreshDelayMs), () {
+                          // Check if widget is still mounted before using context
+                          if (mounted) {
+                            _loadSavedTrips();
+                          }
                         });
                       });
                     },

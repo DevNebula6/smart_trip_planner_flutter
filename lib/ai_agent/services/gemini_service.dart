@@ -12,6 +12,7 @@ import 'package:smart_trip_planner_flutter/trip_planning_chat/data/models/itiner
 import 'package:smart_trip_planner_flutter/ai_agent/services/web_search_service.dart';
 import 'package:smart_trip_planner_flutter/ai_agent/services/ai_response_parser.dart';
 import 'package:smart_trip_planner_flutter/core/services/token_tracking_service.dart';
+import 'package:smart_trip_planner_flutter/core/constants/app_constants.dart';
 import '../../core/utils/helpers.dart';
 
 
@@ -32,7 +33,7 @@ class GeminiAIService implements AIAgentService {
   // Debounced saving (AI Companion pattern) - enhanced with Hive
   Timer? _saveDebounceTimer;
   final Set<String> _pendingSaves = {};
-  static const Duration _saveDebounceDelay = Duration(milliseconds: 300); // Faster debounce with Hive
+  static const Duration _saveDebounceDelay = Duration(milliseconds: AppConstants.sessionSaveDebounceMs);
 
   GeminiAIService({
     required String apiKey,
@@ -51,10 +52,10 @@ class GeminiAIService implements AIAgentService {
             googleSearchEngineId: googleSearchEngineId,
           ),
           generationConfig: GenerationConfig(
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 4096,
+            temperature: AppConstants.aiTemperature,
+            topK: AppConstants.aiTopK,
+            topP: AppConstants.aiTopP,
+            maxOutputTokens: AppConstants.aiMaxOutputTokens,
           ),
         ) {
     _initStorage();
@@ -447,8 +448,8 @@ IMPORTANT: Create a complete trip plan based on the user's request and preferenc
         await _storage.saveSession(hiveSession);
         Logger.d('Session saved immediately for itinerary generation', tag: 'HiveGeminiAI');
 
-        // Save itinerary to Hive
-        final hiveItinerary = _convertToHiveItinerary(itinerary);
+        // Save itinerary to Hive with session reference
+        final hiveItinerary = _convertToHiveItinerary(itinerary, sessionId: activeSessionId);
         await _storage.saveItinerary(hiveItinerary);
 
         return itinerary;
@@ -626,8 +627,8 @@ IMPORTANT: Create a complete trip plan based on the user's request and preferenc
         // Save session
         _debouncedSaveSession(hiveSession);
 
-        // Save refined itinerary
-        final hiveItinerary = _convertToHiveItinerary(refinedItinerary);
+        // Save refined itinerary with session reference
+        final hiveItinerary = _convertToHiveItinerary(refinedItinerary, sessionId: sessionId);
         await _storage.saveItinerary(hiveItinerary);
 
         return refinedItinerary;
@@ -1010,7 +1011,7 @@ User Request: $userPrompt
     );
   }
 
-  HiveItineraryModel _convertToHiveItinerary(ItineraryModel itinerary) {
+  HiveItineraryModel _convertToHiveItinerary(ItineraryModel itinerary, {String? sessionId}) {
     return HiveItineraryModel(
       id: itinerary.id,
       title: itinerary.title,
@@ -1028,6 +1029,7 @@ User Request: $userPrompt
       originalPrompt: itinerary.originalPrompt,
       createdAt: itinerary.createdAt,
       updatedAt: itinerary.updatedAt,
+      sessionId: sessionId, // Link itinerary to session
     );
   }
 
@@ -1061,14 +1063,17 @@ EXAMPLES:
 - User: "Add more restaurants" → Response: "FOLLOWUP: What type of cuisine are you interested in?"
 - User: "Plan a trip to Paris for 3 days" → Response: {JSON itinerary}
 
-CRITICAL CONSTRAINTS:
+CRITICAL JSON FORMATTING RULES:
+- Response MUST be valid, complete, parseable JSON
+- ALWAYS close all braces and brackets properly
 - Keep response under 3600 tokens (roughly 2800 words)
 - Limit to maximum 5-10 days for longer trips
 - Maximum 4-5 activities per day
-- Keep activity descriptions brief 
+- Keep activity descriptions brief and to the point
 - Use short, precise summaries
 - Make sure the FOLLOWUP questions are clear and specific and ask one or two questions at a time not a list of many questions along with your suggestions for the follow up questions answers based on the location,culture and context of the trip
-EXACT JSON schema required:
+
+EXACT JSON schema required (MUST be valid JSON):
 {
   "title": "Trip Title",
   "startDate": "YYYY-MM-DD", 
@@ -1089,12 +1094,23 @@ EXACT JSON schema required:
 }
 
 ESSENTIAL RULES:
-- 24-hour time format only
+- 24-hour time format only (e.g., "09:00", "14:30", "18:00")
 - Real coordinates for location (lat,lng format)
 - For follow-up questions: Start with "FOLLOWUP: " and ask concise, specific questions
 - For itineraries: NO additional text, prose, or code blocks - ONLY the JSON object
-- Ensure JSON is complete and properly closed
+- CRITICAL: Ensure JSON is complete and properly closed - count your braces!
+- Every opening { must have a closing }
+- Every opening [ must have a closing ]
+- Test your JSON structure before responding
 - Use web search results to enhance activity descriptions with current pricing, hours, and reviews
+
+JSON VALIDATION CHECKLIST:
+✓ Opening brace { at start
+✓ All string values in double quotes
+✓ All arrays properly closed with ]
+✓ All objects properly closed with }
+✓ Closing brace } at end
+✓ No trailing commas
 
 EXAMPLE WEB SEARCHES:
 - "restaurants in Kyoto 2025"
@@ -1102,7 +1118,7 @@ EXAMPLE WEB SEARCHES:
 - "Kinkaku-ji Temple opening hours tickets 2025"
 - "Tokyo events March 2025"
 
-Remember: If you need clarification, use "FOLLOWUP: " prefix. If you can create/modify the itinerary, respond with ONLY the JSON object.
+Remember: If you need clarification, use "FOLLOWUP: " prefix. If you can create/modify the itinerary, respond with ONLY a valid, complete, properly-closed JSON object.
 ''';
   }
 
@@ -1325,6 +1341,27 @@ Remember: If you need clarification, use "FOLLOWUP: " prefix. If you can create/
   int _estimateTokens(String text) {
     return (text.length / 4).ceil();
   }
+  
+  /// Dispose of resources to prevent memory leaks
+  void dispose() {
+    Logger.d('Disposing GeminiAIService resources', tag: 'GeminiAI');
+    
+    // Cancel debounce timer
+    _saveDebounceTimer?.cancel();
+    _saveDebounceTimer = null;
+    
+    // Clear pending saves
+    _pendingSaves.clear();
+    
+    // Clear session caches
+    _geminiSessions.clear();
+    _sessionLastUsed.clear();
+    
+    // Dispose web search tool if present
+    _webSearchTool?.dispose();
+    
+    Logger.d('GeminiAIService disposed successfully', tag: 'GeminiAI');
+  }
 }
 
 /// **Enhanced Token Usage Stats**
@@ -1394,5 +1431,12 @@ class AIAgentServiceFactory {
       googleSearchApiKey: googleSearchApiKey,
       googleSearchEngineId: googleSearchEngineId,
     );
+  }
+  
+  /// Dispose of AI service resources (timers, http clients, etc.)
+  static void dispose(AIAgentService service) {
+    if (service is GeminiAIService) {
+      service.dispose();
+    }
   }
 }

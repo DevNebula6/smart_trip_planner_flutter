@@ -184,7 +184,7 @@ class MessageBasedChatBloc extends Bloc<ChatEvent, ChatState> {
       
       emit(ChatMessageSending(
         sessionId: sessionId,
-        messages: _messages.map((msg) => msg.copyWith()).toList(),
+        messages: List.unmodifiable(_messages),
         pendingMessage: event.initialPrompt,
       ));
       
@@ -201,7 +201,7 @@ class MessageBasedChatBloc extends Bloc<ChatEvent, ChatState> {
       
       emit(ChatMessageReceived(
         sessionId: sessionId,
-        messages: _messages.map((msg) => msg.copyWith()).toList(),
+        messages: List.unmodifiable(_messages),
       ));
       
       Logger.d('Chat initialized with ${_messages.length} messages', tag: 'MessageChatBloc');
@@ -219,7 +219,7 @@ class MessageBasedChatBloc extends Bloc<ChatEvent, ChatState> {
         
         emit(ChatMessageReceived(
           sessionId: _currentSessionId!,
-          messages: _messages.map((msg) => msg.copyWith()).toList(),
+          messages: _getMessageSnapshot(),
         ));
       } else {
         emit(ChatError(
@@ -257,7 +257,7 @@ class MessageBasedChatBloc extends Bloc<ChatEvent, ChatState> {
       
       emit(ChatReady(
         sessionId: event.sessionId,
-        messages: _messages.map((msg) => msg.copyWith()).toList(),
+        messages: _getMessageSnapshot(),
       ));
       
       Logger.d('Loaded ${_messages.length} messages for session: ${event.sessionId}', tag: 'MessageChatBloc');
@@ -297,7 +297,7 @@ class MessageBasedChatBloc extends Bloc<ChatEvent, ChatState> {
       
       emit(ChatMessageSending(
         sessionId: _currentSessionId!,
-        messages: _messages.map((msg) => msg.copyWith()).toList(),
+        messages: _getMessageSnapshot(),
         pendingMessage: event.message,
       ));
       
@@ -313,7 +313,7 @@ class MessageBasedChatBloc extends Bloc<ChatEvent, ChatState> {
       
       emit(ChatMessageReceived(
         sessionId: _currentSessionId!,
-        messages: _messages.map((msg) => msg.copyWith()).toList(),
+        messages: _getMessageSnapshot(),
       ));
       
       Logger.d('Message exchange completed. Total messages: ${_messages.length}', tag: 'MessageChatBloc');
@@ -330,7 +330,7 @@ class MessageBasedChatBloc extends Bloc<ChatEvent, ChatState> {
       
       emit(ChatMessageReceived(
         sessionId: _currentSessionId!,
-        messages: _messages.map((msg) => msg.copyWith()).toList(),
+        messages: _getMessageSnapshot(),
       ));
     }
   }
@@ -377,7 +377,7 @@ class MessageBasedChatBloc extends Bloc<ChatEvent, ChatState> {
 
       emit(ChatMessageSending(
         sessionId: _currentSessionId!,
-        messages: _messages.map((msg) => msg.copyWith()).toList(),
+        messages: _getMessageSnapshot(),
         pendingMessage: event.lastUserMessage,
       ));
 
@@ -393,7 +393,7 @@ class MessageBasedChatBloc extends Bloc<ChatEvent, ChatState> {
 
       emit(ChatMessageReceived(
         sessionId: _currentSessionId!,
-        messages: _messages.map((msg) => msg.copyWith()).toList(),
+        messages: _getMessageSnapshot(),
       ));
 
       Logger.d('Message regenerated successfully. Total messages: ${_messages.length}', tag: 'MessageChatBloc');
@@ -410,7 +410,7 @@ class MessageBasedChatBloc extends Bloc<ChatEvent, ChatState> {
       
       emit(ChatMessageReceived(
         sessionId: _currentSessionId!,
-        messages: _messages.map((msg) => msg.copyWith()).toList(),
+        messages: _getMessageSnapshot(),
       ));
     }
   }
@@ -544,9 +544,17 @@ class MessageBasedChatBloc extends Bloc<ChatEvent, ChatState> {
     );
   }
 
+  // ===== HELPER METHODS FOR STATE EMISSION =====
+  
+  /// Create an unmodifiable snapshot of current messages for state emission
+  /// This prevents accidental modifications and is more efficient than deep copying
+  List<ChatMessageModel> _getMessageSnapshot() {
+    return List.unmodifiable(_messages);
+  }
+
   // ===== GETTERS =====
   String? get currentSessionId => _currentSessionId;
-  List<ChatMessageModel> get messages => _messages.map((msg) => msg.copyWith()).toList();
+  List<ChatMessageModel> get messages => List.unmodifiable(_messages);
 
   @override
   Future<void> close() {
