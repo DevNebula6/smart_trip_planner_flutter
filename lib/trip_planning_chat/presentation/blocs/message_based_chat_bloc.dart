@@ -463,6 +463,23 @@ class MessageBasedChatBloc extends Bloc<ChatEvent, ChatState> {
     try {
       final hiveMessage = _convertChatMessageToHiveMessage(message);
       await _storageService.saveMessage(hiveMessage);
+      
+      // If message contains itinerary, update session's tripContext
+      if (message.hasItinerary && message.itinerary != null && _currentSessionId != null) {
+        final hiveSession = await _storageService.getSession(_currentSessionId!);
+        if (hiveSession != null) {
+          // Update tripContext with latest itinerary metadata (not the full object)
+          hiveSession.tripContext['has_itinerary'] = true;
+          hiveSession.tripContext['itinerary_title'] = message.itinerary!.title;
+          hiveSession.tripContext['duration_days'] = message.itinerary!.durationDays;
+          hiveSession.tripContext['start_date'] = message.itinerary!.startDate;
+          hiveSession.tripContext['end_date'] = message.itinerary!.endDate;
+          
+          // Save the session through the storage service
+          await _storageService.saveSession(hiveSession);
+          Logger.d('Updated session tripContext with itinerary metadata', tag: 'MessageChatBloc');
+        }
+      }
     } catch (e) {
       Logger.e('Failed to save message to storage: $e', tag: 'MessageChatBloc');
     }

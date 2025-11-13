@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../auth/presentation/pages/signup_signin_page.dart';
 import '../../trip_planning_chat/presentation/pages/home_page.dart';
 import '../../trip_planning_chat/presentation/pages/chat_page.dart';
+import '../../trip_planning_chat/presentation/pages/itinerary_detail_page.dart';
+import '../../trip_planning_chat/data/models/itinerary_models.dart';
 import '../../auth/presentation/pages/profile_page.dart';
 import '../onboarding/onboarding_page.dart';
 
@@ -12,6 +14,7 @@ class AppRoutes {
   static const String signup = '/signup';
   static const String home = '/home';
   static const String chat = '/chat';
+  static const String itineraryDetail = '/itinerary-detail';
   static const String profile = '/profile';
   static const String sessionDemo = '/session-demo';
 }
@@ -36,6 +39,15 @@ class AppRouter {
           builder: (_) => ChatPage(
             initialPrompt: args?['initialPrompt'] as String?,
             sessionId: args?['sessionId'] as String?,
+          ),
+        );
+      
+      case AppRoutes.itineraryDetail:
+        final args = settings.arguments as Map<String, dynamic>?;
+        return MaterialPageRoute(
+          builder: (_) => ItineraryDetailPage(
+            itinerary: args?['itinerary'] as ItineraryModel,
+            sessionId: args?['sessionId'] as String,
           ),
         );
         

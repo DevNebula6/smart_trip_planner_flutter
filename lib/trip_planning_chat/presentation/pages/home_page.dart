@@ -1,15 +1,16 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_styles.dart';
-import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../shared/navigation/app_router.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 import '../blocs/home_bloc.dart';
 import '../widgets/trip_card.dart';
-import '../widgets/custom_text_field.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../core/storage/hive_storage_service.dart';
+import '../../data/models/itinerary_models.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -81,531 +82,581 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
-      body: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            // Enhanced top section with gradient background
-            _buildTopSection(),
-            
-            // Main content with better spacing
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppDimensions.paddingL,
-                ),
-                child: Column(
-                  children: [
-                    const SizedBox(height: AppDimensions.paddingXL),
-                    
-                    // Enhanced main question text
-                    _buildMainQuestion(),
-                    
-                    const SizedBox(height: AppDimensions.paddingXXL),
-                    
-                    // Enhanced chat input field
-                    _buildChatInput(),
-                    
-                    const SizedBox(height: AppDimensions.paddingXL),
-                    
-                    // Enhanced create button
-                    _buildCreateButton(),
-                    
-                    const SizedBox(height: AppDimensions.paddingS),
-                    
-                    // Enhanced saved itineraries section
-                    _buildSavedItinerariesSection(),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTopSection() {
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.gradientStart,
-            AppColors.gradientEnd,
-          ],
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(AppDimensions.radiusXXL),
-          bottomRight: Radius.circular(AppDimensions.radiusXXL),
-        ),
-      ),
-      padding: const EdgeInsets.fromLTRB(
-        AppDimensions.paddingL,
-        AppDimensions.paddingXL,
-        AppDimensions.paddingL,
-        AppDimensions.paddingXL,
-      ),
-      child: Row(
+      backgroundColor: AppColors.grey50,
+      extendBodyBehindAppBar: true,
+      body: Stack(
         children: [
-          // Enhanced greeting text
-          Expanded(
-            child: BlocBuilder<AuthBloc, AuthState>(
-              builder: (context, state) {
-                String greeting = 'Hey Traveler'; // Default greeting
-                if (state is AuthStateLoggedIn) {
-                  final userName = state.user.displayName;
-                  greeting = 'Hey ${userName.split(' ').first}'; // Use first name only
-                }
-                
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '$greeting 👋',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primaryText,
-                        fontSize: 26,
-                      ),
-                    ),
-                    const SizedBox(height: AppDimensions.paddingS),
-                    Text(
-                      'Where would you like to explore?',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: AppColors.secondaryText,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
+          // Gradient Background
+          _buildGradientBackground(),
           
-          // Enhanced profile avatar
-          GestureDetector(
-            onTap: () {
-              Navigator.pushNamed(context, AppRoutes.profile);
-            },
-            child: Container(
-              width: AppDimensions.avatarL,
-              height: AppDimensions.avatarL,
-              decoration: BoxDecoration(
-                color: AppColors.primaryGreen,
-                shape: BoxShape.circle,
-                boxShadow: const [AppShadows.medium],
-              ),
-              child: BlocBuilder<AuthBloc, AuthState>(
-                builder: (context, state) {
-                  String initial = 'S'; // Default initial
-                  if (state is AuthStateLoggedIn) {
-                    initial = state.user.displayName.substring(0, 1).toUpperCase();
-                  }
-                  
-                  return Center(
-                    child: Text(
-                      initial,
-                      style: const TextStyle(
-                        color: AppColors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMainQuestion() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppDimensions.paddingM),
-      child: Column(
-        children: [
-          // Travel icon for visual appeal
-          Container(
-            width: AppDimensions.iconXXL,
-            height: AppDimensions.iconXXL,
-            margin: const EdgeInsets.only(bottom: AppDimensions.paddingL),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.primaryGreen, AppColors.accentGreen],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              shape: BoxShape.circle,
-              boxShadow: const [AppShadows.floating],
-            ),
-            child: const Icon(
-              Icons.flight_takeoff,
-              color: AppColors.white,
-              size: 32,
-            ),
-          ),
-          
-          Text(
-            AppStrings.whatYourVision,
-            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: AppColors.primaryText,
-              height: 1.3,
-              fontSize: 32,
-              letterSpacing: -0.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
+          // Main Content
+          SafeArea(
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                // Custom App Bar
+                _buildAppBar(context),
                 
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChatInput() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
-        boxShadow: const [AppShadows.medium],
-        border: Border.all(
-          color: AppColors.lightGrey,
-          width: 1,
-        ),
-      ),
-      child: CustomTextField(
-        controller: _promptController,
-        focusNode: _promptFocusNode,
-        hint: AppStrings.tripDescriptionPlaceholder,
-        maxLines: 5,
-        textInputAction: TextInputAction.done,
-        suffixIcon: Container(
-          margin: const EdgeInsets.all(AppDimensions.paddingM),
-          child: GestureDetector(
-            onTap: () {
-              // TODO: Add voice input functionality
-            },
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primaryGreen, AppColors.accentGreen],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-                boxShadow: const [AppShadows.card],
-              ),
-              child: const Icon(
-                Icons.mic,
-                color: AppColors.white,
-                size: 20,
-              ),
-            ),
-          ),
-        ),
-        onSubmitted: (_) => _onCreateItinerary(),
-      ),
-    );
-  }
-
-  Widget _buildCreateButton() {
-    return Container(
-      width: double.infinity,
-      height: AppDimensions.buttonHeightL,
-      decoration: BoxDecoration(
-        color: AppColors.primaryGreen,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
-        boxShadow: const [AppShadows.floating],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: _onCreateItinerary,
-          borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-              vertical: AppDimensions.paddingM,
-              horizontal: AppDimensions.paddingL,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.auto_awesome,
-                  color: AppColors.white,
-                  size: 24,
-                ),
-                const SizedBox(width: AppDimensions.paddingM),
-                Text(
-                  AppStrings.createMyItinerary,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.white,
-                    fontSize: 18,
+                // Main Content
+                SliverToBoxAdapter(
+                  child: Column(
+                    children: [
+                      const SizedBox(height: AppDimensions.paddingL),
+                      
+                      // Hero Section
+                      _buildHeroSection(),
+                      
+                      const SizedBox(height: AppDimensions.paddingXXL),
+                      
+                      // Quick Input Section
+                      _buildQuickInputSection(),
+                      
+                      const SizedBox(height: AppDimensions.paddingXXXL),
+                      
+                      // Saved Trips Section
+                      _buildSavedTripsSection(),
+                      
+                      const SizedBox(height: AppDimensions.paddingXXL),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildSavedItinerariesSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Header for saved itineraries section
-        Container(
-          margin: const EdgeInsets.symmetric(vertical: AppDimensions.paddingL),
-          child: Row(
-            children: [
-              // Accent line indicator
-              Container(
-                width: 4,
-                height: 24,
+  // ═══════════════════════════════════════════════════════════════
+  // 🎨 NEW MODERN UI COMPONENTS
+  // ═══════════════════════════════════════════════════════════════
+  
+  Widget _buildGradientBackground() {
+    return Container(
+      height: 400,
+      decoration: BoxDecoration(
+        gradient: AppGradients.primary,
+      ),
+    );
+  }
+  
+  Widget _buildAppBar(BuildContext context) {
+    return SliverAppBar(
+      expandedHeight: 50,
+      floating: true,
+      snap: true,
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      flexibleSpace: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppDimensions.paddingL,
+          vertical: AppDimensions.paddingM,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Greeting
+            Expanded(
+              child: BlocBuilder<AuthBloc, AuthState>(
+                builder: (context, state) {
+                  String greeting = 'Hey Traveler';
+                  if (state is AuthStateLoggedIn) {
+                    greeting = 'Hey ${state.user.displayName.split(' ').first}';
+                  }
+                  return Text(
+                    '$greeting 👋',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.white,
+                    ),
+                  );
+                },
+              ),
+            ),
+            
+            // Profile Avatar
+            GestureDetector(
+              onTap: () => Navigator.pushNamed(context, AppRoutes.profile),
+              child: Container(
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
-                  color: AppColors.primaryGreen,
-                  borderRadius: BorderRadius.circular(2),
+                  gradient: AppGradients.accent,
+                  shape: BoxShape.circle,
+                  boxShadow: AppShadows.card,
+                  border: Border.all(
+                    color: AppColors.white.withOpacity(0.3),
+                    width: 2,
+                  ),
+                ),
+                child: BlocBuilder<AuthBloc, AuthState>(
+                  builder: (context, state) {
+                    String initial = 'S';
+                    if (state is AuthStateLoggedIn) {
+                      initial = state.user.displayName.substring(0, 1).toUpperCase();
+                    }
+                    return Center(
+                      child: Text(
+                        initial,
+                        style: const TextStyle(
+                          color: AppColors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildHeroSection() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: AppDimensions.paddingL),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Plan Your Perfect',
+            style: Theme.of(context).textTheme.displaySmall?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: AppColors.white,
+              height: 1.1,
+              letterSpacing: -1,
+            ),
+          ),
+          ShaderMask(
+            shaderCallback: (bounds) => AppGradients.sunset.createShader(bounds),
+            child: Text(
+              'Journey',
+              style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: AppColors.white,
+                height: 1.1,
+                letterSpacing: -1,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppDimensions.paddingM),
+          Text(
+            'AI-powered itineraries tailored just for you',
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              color: AppColors.white.withOpacity(0.9),
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickInputSection() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: AppDimensions.paddingL),
+      padding: const EdgeInsets.all(AppDimensions.paddingXL),
+      decoration: BoxDecoration(
+        gradient: AppGradients.subtlePrimary,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusXXL),
+        boxShadow: AppShadows.card,
+        border: Border.all(
+          color: AppColors.primaryVeryLight,
+          width: 2,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Icon and Title
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(AppDimensions.paddingM),
+                decoration: BoxDecoration(
+                  gradient: AppGradients.primary,
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                  boxShadow: [AppShadows.primaryGlow],
+                ),
+                child: const Icon(
+                  Icons.auto_awesome,
+                  color: AppColors.white,
+                  size: 24,
                 ),
               ),
               const SizedBox(width: AppDimensions.paddingM),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Quick Start',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryText,
+                      ),
+                    ),
+                    Text(
+                      'Describe your dream trip',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.secondaryText,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: AppDimensions.paddingL),
+          
+          // Input Field
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+              border: Border.all(
+                color: AppColors.grey200,
+                width: 1.5,
+              ),
+              boxShadow: [AppShadows.sm],
+            ),
+            child: TextField(
+              controller: _promptController,
+              focusNode: _promptFocusNode,
+              maxLines: 3,
+              style: Theme.of(context).textTheme.bodyLarge,
+              decoration: InputDecoration(
+                hintText: 'e.g., "5 days in Tokyo, solo trip, love food and culture"',
+                hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.grey400,
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.all(AppDimensions.paddingL),
+              ),
+              onSubmitted: (_) => _onCreateItinerary(),
+            ),
+          ),
+          
+          const SizedBox(height: AppDimensions.paddingL),
+          
+          // Action Button
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: AppGradients.primary,
+                borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                boxShadow: [AppShadows.primaryGlow, AppShadows.md],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _onCreateItinerary,
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.rocket_launch,
+                        color: AppColors.white,
+                        size: 24,
+                      ),
+                      const SizedBox(width: AppDimensions.paddingM),
+                      Text(
+                        'Generate My Itinerary',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.white,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSavedTripsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section Header
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: AppDimensions.paddingL),
+          child: Row(
+            children: [
+              Icon(
+                Icons.bookmark,
+                color: AppColors.primary,
+                size: 28,
+              ),
+              const SizedBox(width: AppDimensions.paddingM),
               Text(
-                'Offline Saved Itineraries',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
+                'Your Trips',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
                   color: AppColors.primaryText,
-                  fontSize: 22,
                 ),
               ),
             ],
           ),
         ),
         
+        const SizedBox(height: AppDimensions.paddingL),
+        
+        // Trips List
         BlocBuilder<HomeBloc, HomeState>(
           builder: (context, state) {
             if (state is HomeLoading) {
-              return Center(
-                child: Container(
-                  padding: const EdgeInsets.all(AppDimensions.paddingXL),
-                  child: Column(
-                    children: [
-                      const CircularProgressIndicator(
-                        color: AppColors.primaryGreen,
-                        strokeWidth: 3,
-                      ),
-                      const SizedBox(height: AppDimensions.paddingM),
-                      Text(
-                        'Loading your trips...',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.secondaryText,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
+              return _buildLoadingState();
             } else if (state is HomeError) {
-              return Container(
-                margin: const EdgeInsets.all(AppDimensions.paddingM),
-                padding: const EdgeInsets.all(AppDimensions.paddingL),
-                decoration: BoxDecoration(
-                  color: AppColors.error.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-                  border: Border.all(color: AppColors.error.withOpacity(0.3)),
-                ),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.error_outline,
-                      size: 48,
-                      color: AppColors.error,
-                    ),
-                    const SizedBox(height: AppDimensions.paddingM),
-                    Text(
-                      'Oops! Something went wrong',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppColors.error,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: AppDimensions.paddingS),
-                    Text(
-                      state.message,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.error,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: AppDimensions.paddingL),
-                    ElevatedButton(
-                      onPressed: _loadSavedTrips,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.error,
-                        foregroundColor: AppColors.white,
-                      ),
-                      child: const Text('Try Again'),
-                    ),
-                  ],
-                ),
-              );
+              return _buildErrorState(state.message);
             } else if (state is HomeLoaded) {
               if (state.savedTrips.isEmpty) {
-                return _buildEmptyState();
+                return _buildEmptyTripsState();
               }
-              
-              return ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: state.savedTrips.length,
-                separatorBuilder: (context, index) => const SizedBox(height: AppDimensions.paddingM),
-                itemBuilder: (context, index) {
-                  final trip = state.savedTrips[index];
-                  return TripCard(
-                    tripSession: trip,
-                    onTap: () {
-                      // Navigate to chat page with existing session
-                      Navigator.pushNamed(
-                        context,
-                        AppRoutes.chat,
-                        arguments: {
-                          'sessionId': trip.sessionId,
-                        },
-                      ).then((_) {
-                        // Refresh the trip list when user returns from chat
-                        Logger.d('Returned from chat session, refreshing trip list', tag: 'HomePage');
-                        // Add a small delay to ensure any new messages are fully saved
-                        Future.delayed(const Duration(milliseconds: AppConstants.shortUiRefreshDelayMs), () {
-                          // Check if widget is still mounted before using context
-                          if (mounted) {
-                            _loadSavedTrips();
-                          }
-                        });
-                      });
-                    },
-                    onDelete: () {
-                      // Show confirmation dialog before deleting
-                      _showDeleteConfirmation(trip);
-                    },
-                  );
-                },
-              );
+              return _buildTripsList(state.savedTrips);
             }
-            
-            // Initial state
-            return _buildEmptyState();
+            return _buildEmptyTripsState();
           },
         ),
-        
-        const SizedBox(height: AppDimensions.paddingXXL),
       ],
     );
   }
-
-  Widget _buildEmptyState() {
+  
+  Widget _buildLoadingState() {
     return Container(
-      margin: const EdgeInsets.all(AppDimensions.paddingM),
-      padding: const EdgeInsets.all(AppDimensions.paddingXL),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
-        boxShadow: const [AppShadows.card],
-        border: Border.all(
-          color: AppColors.lightGrey.withOpacity(0.5),
-          width: 1,
-        ),
-      ),
+      margin: const EdgeInsets.all(AppDimensions.paddingL),
+      padding: const EdgeInsets.all(AppDimensions.paddingXXL),
       child: Column(
         children: [
-          // Enhanced empty state illustration
-          Container(
-            width: 80,
-            height: 80,
-            margin: const EdgeInsets.only(bottom: AppDimensions.paddingL),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.primaryGreen.withOpacity(0.1),
-                  AppColors.accentGreen.withOpacity(0.1),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.explore,
-              size: 40,
-              color: AppColors.primaryGreen,
+          SizedBox(
+            width: 50,
+            height: 50,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
           ),
-          
-          Text(
-            'No saved trips yet',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppColors.primaryText,
-              fontWeight: FontWeight.w600,
-              fontSize: 20,
-            ),
-          ),
-          
-          const SizedBox(height: AppDimensions.paddingS),
-          
-          Text(
-            'Create your first itinerary above and it will appear here for offline access',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppColors.secondaryText,
-              height: 1.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          
           const SizedBox(height: AppDimensions.paddingL),
-          
-          // Inspirational tips
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppDimensions.paddingL,
-              vertical: AppDimensions.paddingM,
-            ),
-            decoration: BoxDecoration(
-              color: AppColors.gradientStart,
-              borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.lightbulb_outline,
-                  color: AppColors.primaryGreen,
-                  size: 20,
-                ),
-                const SizedBox(width: AppDimensions.paddingS),
-                Expanded(
-                  child: Text(
-                    'Try: "5 days in Tokyo, solo travel, cultural experiences"',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.primaryGreen,
-                      fontStyle: FontStyle.italic,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ],
+          Text(
+            'Loading your adventures...',
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              color: AppColors.secondaryText,
             ),
           ),
         ],
       ),
     );
   }
+  
+  Widget _buildErrorState(String message) {
+    return Container(
+      margin: const EdgeInsets.all(AppDimensions.paddingL),
+      padding: const EdgeInsets.all(AppDimensions.paddingXL),
+      decoration: BoxDecoration(
+        color: AppColors.errorLight.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
+        border: Border.all(color: AppColors.error.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.error_outline, size: 48, color: AppColors.error),
+          const SizedBox(height: AppDimensions.paddingM),
+          Text(
+            'Oops! Something went wrong',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: AppColors.error,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: AppDimensions.paddingS),
+          Text(
+            message,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppColors.error,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppDimensions.paddingL),
+          ElevatedButton(
+            onPressed: _loadSavedTrips,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: AppColors.white,
+            ),
+            child: const Text('Try Again'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildEmptyTripsState() {
+    return Container(
+      margin: const EdgeInsets.all(AppDimensions.paddingL),
+      padding: const EdgeInsets.all(AppDimensions.paddingXXL),
+      decoration: BoxDecoration(
+        gradient: AppGradients.subtleGrey,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusXXL),
+        border: Border.all(color: AppColors.grey200),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              gradient: AppGradients.primaryRadial,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.explore_outlined,
+              size: 50,
+              color: AppColors.white,
+            ),
+          ),
+          const SizedBox(height: AppDimensions.paddingL),
+          Text(
+            'No saved trips yet',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppColors.primaryText,
+            ),
+          ),
+          const SizedBox(height: AppDimensions.paddingS),
+          Text(
+            'Start planning your first adventure above!',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppColors.secondaryText,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildTripsList(List trips) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: AppDimensions.paddingL),
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: trips.length,
+        separatorBuilder: (context, index) => const SizedBox(height: AppDimensions.paddingL),
+        itemBuilder: (context, index) {
+          final trip = trips[index];
+          return _buildModernTripCard(trip);
+        },
+      ),
+    );
+  }
+  
+  Widget _buildModernTripCard(dynamic trip) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: AppGradients.cardElevated,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
+        boxShadow: AppShadows.card,
+        border: Border.all(color: AppColors.grey200),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () async {
+            // Load messages to check if session has itinerary
+            final storageService = HiveStorageService.instance;
+            final messages = await storageService.getMessagesForSession(trip.sessionId);
+            
+            // Find the most recent message with an itinerary
+            ItineraryModel? latestItinerary;
+            for (var message in messages.reversed) {
+              if (message.itinerary != null) {
+                // Convert HiveItineraryModel to ItineraryModel
+                final hiveItinerary = message.itinerary!;
+                latestItinerary = ItineraryModel(
+                  id: hiveItinerary.id,
+                  title: hiveItinerary.title,
+                  startDate: hiveItinerary.startDate,
+                  endDate: hiveItinerary.endDate,
+                  days: hiveItinerary.days.map((day) => DayPlanModel(
+                    date: day.date,
+                    summary: day.summary,
+                    items: day.items.map((item) => ActivityItemModel(
+                      time: item.time,
+                      activity: item.activity,
+                      location: item.location,
+                    )).toList(),
+                  )).toList(),
+                  originalPrompt: hiveItinerary.originalPrompt,
+                  createdAt: hiveItinerary.createdAt,
+                  updatedAt: hiveItinerary.updatedAt,
+                );
+                break;
+              }
+            }
+            
+            if (latestItinerary != null) {
+              // Navigate to detail view directly
+              Navigator.pushNamed(
+                context,
+                AppRoutes.itineraryDetail,
+                arguments: {
+                  'itinerary': latestItinerary,
+                  'sessionId': trip.sessionId,
+                },
+              ).then((_) {
+                Logger.d('Returned from detail view, refreshing trip list', tag: 'HomePage');
+                Future.delayed(const Duration(milliseconds: AppConstants.shortUiRefreshDelayMs), () {
+                  if (mounted) {
+                    _loadSavedTrips();
+                  }
+                });
+              });
+            } else {
+              // Navigate to chat page for sessions without itinerary
+              Navigator.pushNamed(
+                context,
+                AppRoutes.chat,
+                arguments: {
+                  'sessionId': trip.sessionId,
+                },
+              ).then((_) {
+                Logger.d('Returned from chat session, refreshing trip list', tag: 'HomePage');
+                Future.delayed(const Duration(milliseconds: AppConstants.shortUiRefreshDelayMs), () {
+                  if (mounted) {
+                    _loadSavedTrips();
+                  }
+                });
+              });
+            }
+          },
+          borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
+          child: Padding(
+            padding: const EdgeInsets.all(AppDimensions.paddingL),
+            child: TripCard(
+              tripSession: trip,
+              onTap: () {}, // Handled by InkWell above
+              onDelete: () => _showDeleteConfirmation(trip),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+  
 
   void _showDeleteConfirmation(dynamic trip) {
     // Extract trip title for better UX

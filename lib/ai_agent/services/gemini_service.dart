@@ -214,6 +214,22 @@ IMPORTANT: Create a response based on the user's request and preferences above.
         response = await chatSession.sendMessage(Content.functionResponses(functionResponses));
       }
 
+      // Debug response structure
+      Logger.d('Response candidates count: ${response.candidates.length}', tag: 'GeminiAI');
+      if (response.candidates.isNotEmpty) {
+        final firstCandidate = response.candidates.first;
+        Logger.d('First candidate parts count: ${firstCandidate.content.parts.length}', tag: 'GeminiAI');
+        Logger.d('Finish reason: ${firstCandidate.finishReason}', tag: 'GeminiAI');
+        for (var i = 0; i < firstCandidate.content.parts.length; i++) {
+          final part = firstCandidate.content.parts[i];
+          if (part is TextPart) {
+            Logger.d('Part $i (TextPart) length: ${part.text.length}', tag: 'GeminiAI');
+          } else {
+            Logger.d('Part $i type: ${part.runtimeType}', tag: 'GeminiAI');
+          }
+        }
+      }
+      
       // Get response text
       final responseText = response.text ?? '';
       Logger.d('AI response length: ${responseText.length}', tag: 'GeminiAI');
@@ -377,7 +393,21 @@ IMPORTANT: Create a complete trip plan based on the user's request and preferenc
         }
       }
 
-      // Debug the actual response
+      // Debug the actual response with detailed inspection
+      Logger.d('Response candidates count: ${response.candidates.length}', tag: 'HiveGeminiAI');
+      if (response.candidates.isNotEmpty) {
+        final firstCandidate = response.candidates.first;
+        Logger.d('First candidate parts count: ${firstCandidate.content.parts.length}', tag: 'HiveGeminiAI');
+        for (var i = 0; i < firstCandidate.content.parts.length; i++) {
+          final part = firstCandidate.content.parts[i];
+          if (part is TextPart) {
+            Logger.d('Part $i (TextPart) length: ${part.text.length}', tag: 'HiveGeminiAI');
+          } else {
+            Logger.d('Part $i type: ${part.runtimeType}', tag: 'HiveGeminiAI');
+          }
+        }
+      }
+      
       final responseText = response.text ?? '';
       Logger.d('Full AI response length: ${responseText.length}', tag: 'HiveGeminiAI');
       Logger.d('Response complete: ${!responseText.contains('...') && responseText.contains('}')}', tag: 'HiveGeminiAI');
@@ -1068,9 +1098,9 @@ CRITICAL JSON FORMATTING RULES:
 - ALWAYS close all braces and brackets properly
 - Keep response under 3600 tokens (roughly 2800 words)
 - Limit to maximum 5-10 days for longer trips
-- Maximum 4-5 activities per day
-- Keep activity descriptions brief and to the point
-- Use short, precise summaries
+- Maximum 3-5 activities per day
+- Keep activity descriptions brief and short and to the point
+- Use short, precise points
 - Make sure the FOLLOWUP questions are clear and specific and ask one or two questions at a time not a list of many questions along with your suggestions for the follow up questions answers based on the location,culture and context of the trip
 
 EXACT JSON schema required (MUST be valid JSON):

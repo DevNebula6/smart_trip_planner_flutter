@@ -7,16 +7,20 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: const ColorScheme.light(
-        primary: AppColors.primaryGreen,
-        secondary: AppColors.orange,
+        primary: AppColors.primary,
+        secondary: AppColors.secondary,
+        tertiary: AppColors.tertiary,
         surface: AppColors.white,
         background: AppColors.backgroundColor,
         error: AppColors.error,
-        onPrimary: AppColors.white,
-        onSecondary: AppColors.white,
-        onSurface: AppColors.primaryText,
+        onPrimary: AppColors.onPrimary,
+        onSecondary: AppColors.onSecondary,
+        onSurface: AppColors.onSurface,
         onBackground: AppColors.primaryText,
         onError: AppColors.white,
+        surfaceTint: AppColors.primaryVeryLight,
+        outline: AppColors.grey300,
+        outlineVariant: AppColors.grey200,
       ),
       textTheme: _buildTextTheme(),
       appBarTheme: _buildAppBarTheme(),
@@ -131,9 +135,10 @@ class AppTheme {
   static ElevatedButtonThemeData _buildElevatedButtonTheme() {
     return ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primaryGreen,
-        foregroundColor: AppColors.white,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.onPrimary,
         elevation: 0,
+        shadowColor: AppColors.shadowPrimary,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppDimensions.radiusL),
         ),
@@ -142,6 +147,7 @@ class AppTheme {
         textStyle: GoogleFonts.poppins(
           fontSize: 18,
           fontWeight: FontWeight.w600,
+          letterSpacing: 0.2,
         ),
       ),
     );
@@ -157,11 +163,11 @@ class AppTheme {
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-        borderSide: BorderSide.none,
+        borderSide: BorderSide(color: AppColors.grey200, width: 1),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-        borderSide: const BorderSide(color: AppColors.primaryGreen, width: 2),
+        borderSide: const BorderSide(color: AppColors.primary, width: 2),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppDimensions.radiusL),
@@ -197,10 +203,40 @@ class AppTheme {
   static BottomNavigationBarThemeData _buildBottomNavigationBarTheme() {
     return const BottomNavigationBarThemeData(
       backgroundColor: AppColors.white,
-      selectedItemColor: AppColors.primaryGreen,
+      selectedItemColor: AppColors.primary,
       unselectedItemColor: AppColors.grey,
       type: BottomNavigationBarType.fixed,
       elevation: 8,
+    );
+  }
+  
+  // Additional helper method for creating gradient buttons
+  static BoxDecoration gradientButtonDecoration({
+    Gradient? gradient,
+    double borderRadius = 16.0,
+    List<BoxShadow>? boxShadow,
+  }) {
+    return BoxDecoration(
+      gradient: gradient ?? AppGradients.primary,
+      borderRadius: BorderRadius.circular(borderRadius),
+      boxShadow: boxShadow ?? AppShadows.card,
+    );
+  }
+  
+  // Helper method for glassmorphism effect
+  static BoxDecoration glassDecoration({
+    double borderRadius = 16.0,
+    Color? backgroundColor,
+    Color? borderColor,
+  }) {
+    return BoxDecoration(
+      color: backgroundColor ?? AppColors.glassBackground,
+      borderRadius: BorderRadius.circular(borderRadius),
+      border: Border.all(
+        color: borderColor ?? AppColors.glassBorder,
+        width: 1.5,
+      ),
+      boxShadow: AppShadows.card,
     );
   }
 }

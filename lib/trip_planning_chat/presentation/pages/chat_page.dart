@@ -7,6 +7,7 @@ import '../widgets/itinerary_card.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../../trip_planning_chat/data/models/itinerary_models.dart';
+import '../../../shared/navigation/app_router.dart';
 
 /// ** Chat Page - Message Based**
 /// 
@@ -139,6 +140,18 @@ class _ChatPageState extends State<ChatPage> {
       listener: (context, state) {
         if (state is ChatMessageReceived) {
           _scrollToBottom();
+          
+          // Auto-navigate to detail view when AI generates new itinerary
+          final messages = state.messages;
+          if (messages.isNotEmpty) {
+            final lastMessage = messages.last;
+            if (!lastMessage.isUser && lastMessage.hasItinerary) {
+              // AI just generated an itinerary - auto navigate
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _navigateToDetailView(state);
+              });
+            }
+          }
         }
         
         if (state is ChatError) {
@@ -151,6 +164,9 @@ class _ChatPageState extends State<ChatPage> {
         }
       },
       builder: (context, state) {
+        // Check if we have an itinerary to show detail button
+        final hasItinerary = _hasItineraryInMessages(state);
+        
         return Scaffold(
           backgroundColor: AppColors.backgroundColor,
           appBar: AppBar(
@@ -165,6 +181,15 @@ class _ChatPageState extends State<ChatPage> {
               _buildInputArea(state),
             ],
           ),
+          floatingActionButton: hasItinerary
+              ? FloatingActionButton.extended(
+                  heroTag: 'chat_view_details_fab',
+                  onPressed: () => _navigateToDetailView(state),
+                  icon: const Icon(Icons.visibility),
+                  label: const Text('View Details'),
+                  backgroundColor: AppColors.primaryGreen,
+                )
+              : null,
         );
       },
     );
@@ -426,5 +451,66 @@ class _ChatPageState extends State<ChatPage> {
         },
       ),
     );
+  }
+
+  /// Check if any message contains an itinerary
+  bool _hasItineraryInMessages(ChatState state) {
+    List<dynamic> messages = [];
+    
+    if (state is ChatReady) {
+      messages = state.messages;
+    } else if (state is ChatMessageSending) {
+      messages = state.messages;
+    } else if (state is ChatMessageReceived) {
+      messages = state.messages;
+    } else if (state is ChatError && state.messages != null) {
+      messages = state.messages!;
+    }
+
+    return messages.any((msg) => 
+      msg is ChatMessageModel && msg.hasItinerary
+    );
+  }
+
+  /// Navigate to ItineraryDetailPage with the first itinerary found
+  void _navigateToDetailView(ChatState state) {
+    List<dynamic> messages = [];
+    String? sessionId;
+    
+    if (state is ChatReady) {
+      messages = state.messages;
+      sessionId = state.sessionId;
+    } else if (state is ChatMessageSending) {
+      messages = state.messages;
+      sessionId = state.sessionId;
+    } else if (state is ChatMessageReceived) {
+      messages = state.messages;
+      sessionId = state.sessionId;
+    } else if (state is ChatError && state.messages != null) {
+      messages = state.messages!;
+      sessionId = state.sessionId;
+    }
+
+    // Find the first message with an itinerary
+    ChatMessageModel? messageWithItinerary;
+    try {
+      messageWithItinerary = messages.firstWhere(
+        (msg) => msg is ChatMessageModel && msg.hasItinerary,
+      ) as ChatMessageModel?;
+    } catch (e) {
+      // No message with itinerary found
+      messageWithItinerary = null;
+    }
+
+    if (messageWithItinerary != null && sessionId != null) {
+      Navigator.pushReplacementNamed(
+        context,
+        AppRoutes.itineraryDetail,
+        arguments: {
+          'itinerary': messageWithItinerary.itinerary!,
+          'sessionId': sessionId,
+        },
+      );
+    }
   }
 }

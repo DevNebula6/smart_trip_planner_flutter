@@ -92,7 +92,7 @@ class _ItineraryCardState extends State<ItineraryCard> {
           color: AppColors.lightGrey.withOpacity(0.3),
           width: 1,
         ),
-        boxShadow: const [AppShadows.card],
+        boxShadow: AppShadows.card,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -139,7 +139,7 @@ class _ItineraryCardState extends State<ItineraryCard> {
           color: AppColors.lightGrey.withOpacity(0.3),
           width: 1,
         ),
-        boxShadow: const [AppShadows.card],
+        boxShadow: AppShadows.card,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

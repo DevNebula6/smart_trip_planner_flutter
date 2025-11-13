@@ -294,8 +294,8 @@ class EnhancedChatMessageBubble extends StatelessWidget {
       height: 40,
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: [
-          AppColors.orange.withOpacity(0.2),
-          AppColors.lightOrange.withOpacity(0.5),
+          Colors.orange.withOpacity(0.2),
+          Colors.amber.withOpacity(0.5),
         ]),
         shape: BoxShape.circle,
       ),

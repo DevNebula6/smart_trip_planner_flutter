@@ -28,7 +28,7 @@ class ItineraryCompactCard extends StatelessWidget {
             color: AppColors.primaryGreen.withOpacity(0.2),
             width: 1,
           ),
-          boxShadow: const [AppShadows.card],
+          boxShadow: AppShadows.card,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
