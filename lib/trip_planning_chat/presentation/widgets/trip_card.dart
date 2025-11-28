@@ -44,7 +44,7 @@ class TripCard extends StatelessWidget {
                   width: 8,
                   height: 8,
                   decoration: const BoxDecoration(
-                    color: AppColors.primaryGreen,
+                    color: AppColors.primaryAccent,
                     shape: BoxShape.circle,
                   ),
                 ),

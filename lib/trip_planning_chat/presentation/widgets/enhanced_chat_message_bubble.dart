@@ -89,7 +89,7 @@ class EnhancedChatMessageBubble extends StatelessWidget {
         vertical: AppDimensions.paddingS,
       ),
       decoration: BoxDecoration(
-        color: message.isUser ? AppColors.primaryGreen : AppColors.white,
+        color: message.isUser ? AppColors.primaryAccent : AppColors.white,
         borderRadius: BorderRadius.only(
           topLeft: const Radius.circular(16),
           topRight: const Radius.circular(16),
@@ -106,7 +106,7 @@ class EnhancedChatMessageBubble extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: message.isUser 
-                ? AppColors.primaryGreen.withOpacity(0.3)
+                ? AppColors.primaryAccent.withOpacity(0.3)
                 : AppColors.grey.withOpacity(0.1),
             blurRadius: 6,
             offset: const Offset(0, 2),
@@ -207,12 +207,12 @@ class EnhancedChatMessageBubble extends StatelessWidget {
                 icon: Icon(
                   Icons.refresh_rounded,
                   size: 16,
-                  color: AppColors.primaryGreen,
+                  color: AppColors.primaryAccent,
                 ),
                 label: Text(
                   'Regenerate',
                   style: TextStyle(
-                    color: AppColors.primaryGreen,
+                    color: AppColors.primaryAccent,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -221,7 +221,7 @@ class EnhancedChatMessageBubble extends StatelessWidget {
                     horizontal: AppDimensions.paddingM,
                     vertical: AppDimensions.paddingS,
                   ),
-                  backgroundColor: AppColors.primaryGreen.withOpacity(0.1),
+                  backgroundColor: AppColors.primaryAccent.withOpacity(0.1),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -325,11 +325,11 @@ class EnhancedChatMessageBubble extends StatelessWidget {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: AppColors.primaryGreen,
+            color: AppColors.primaryAccent,
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: AppColors.primaryGreen.withOpacity(0.3),
+                color: AppColors.primaryAccent.withOpacity(0.3),
                 blurRadius: 6,
                 offset: const Offset(0, 2),
               ),

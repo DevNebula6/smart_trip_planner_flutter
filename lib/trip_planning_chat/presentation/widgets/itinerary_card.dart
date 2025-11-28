@@ -114,12 +114,7 @@ class _ItineraryCardState extends State<ItineraryCard> {
                 }).toList(),
                 
                 const SizedBox(height: AppDimensions.paddingL),
-                
-                // Actions row
-                _buildActions(context, false),
-                
-                const SizedBox(height: AppDimensions.paddingM),
-                
+                                
                 // Trip details
                 _buildTripDetails(context),
               ],
@@ -159,8 +154,6 @@ class _ItineraryCardState extends State<ItineraryCard> {
                 
                 // Actions - show if we've reached the last step
                 if (_currentAnimationStep >= _animationChunks.length - 1) ...[
-                  const SizedBox(height: AppDimensions.paddingL),
-                  _buildActions(context, _currentAnimationStep == _animationChunks.length - 1),
                   const SizedBox(height: AppDimensions.paddingM),
                   _buildTripDetails(context),
                 ],
@@ -197,7 +190,7 @@ class _ItineraryCardState extends State<ItineraryCard> {
       width: double.infinity,
       padding: const EdgeInsets.all(AppDimensions.paddingM),
       decoration: BoxDecoration(
-        color: AppColors.primaryGreen.withOpacity(0.1),
+        color: AppColors.primaryAccent.withOpacity(0.1),
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(AppDimensions.radiusL),
           topRight: Radius.circular(AppDimensions.radiusL),
@@ -294,7 +287,7 @@ class _ItineraryCardState extends State<ItineraryCard> {
                             'Day $dayNumber: ${day.summary}',
                             textStyle: Theme.of(context).textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.w600,
-                              color: AppColors.primaryGreen,
+                              color: AppColors.primaryAccent,
                             ),
                             speed: const Duration(milliseconds: 25),
                           ),
@@ -306,7 +299,7 @@ class _ItineraryCardState extends State<ItineraryCard> {
                         'Day $dayNumber: ${day.summary}',
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: AppColors.primaryGreen,
+                          color: AppColors.primaryAccent,
                         ),
                       ),
               ),
@@ -342,7 +335,7 @@ class _ItineraryCardState extends State<ItineraryCard> {
             height: 8,
             child: Container(
               decoration: const BoxDecoration(
-                color: AppColors.primaryGreen,
+                color: AppColors.primaryAccent,
                 shape: BoxShape.circle,
               ),
             ),
@@ -378,51 +371,6 @@ class _ItineraryCardState extends State<ItineraryCard> {
         ],
       ),
     );
-  }
-  
-  Widget _buildActions(BuildContext context, bool animate) {
-    return animate
-        ? AnimatedTextKit(
-            animatedTexts: [
-              TyperAnimatedText(
-                '📍 Open in maps',
-                textStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.primaryGreen,
-                  fontWeight: FontWeight.w500,
-                  decoration: TextDecoration.underline,
-                ),
-                speed: const Duration(milliseconds: 25),
-              ),
-            ],
-            totalRepeatCount: 1,
-            onFinished: () {
-              // Animation complete - no more steps
-            },
-          )
-        : GestureDetector(
-            onTap: widget.onOpenInMaps,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('📍', style: TextStyle(fontSize: 16)),
-                const SizedBox(width: AppDimensions.paddingXS),
-                Text(
-                  'Open in maps',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.primaryGreen,
-                    fontWeight: FontWeight.w500,
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-                const SizedBox(width: AppDimensions.paddingXS),
-                Icon(
-                  Icons.open_in_new,
-                  size: 14,
-                  color: AppColors.primaryGreen,
-                ),
-              ],
-            ),
-          );
   }
   
   Widget _buildTripDetails(BuildContext context) {
@@ -499,12 +447,12 @@ class _ItineraryCardState extends State<ItineraryCard> {
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: locationCount > 0 
-              ? AppColors.primaryGreen.withOpacity(0.1)
+              ? AppColors.primaryAccent.withOpacity(0.1)
               : AppColors.lightGrey.withOpacity(0.1),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: locationCount > 0 
-                ? AppColors.primaryGreen.withOpacity(0.3)
+                ? AppColors.primaryAccent.withOpacity(0.3)
                 : AppColors.lightGrey.withOpacity(0.3),
             width: 1,
           ),
@@ -516,7 +464,7 @@ class _ItineraryCardState extends State<ItineraryCard> {
               locationCount > 0 ? Icons.map_outlined : Icons.location_off_outlined,
               size: 16,
               color: locationCount > 0 
-                  ? AppColors.primaryGreen
+                  ? AppColors.primaryAccent
                   : AppColors.hintText,
             ),
             const SizedBox(width: 4),
@@ -524,7 +472,7 @@ class _ItineraryCardState extends State<ItineraryCard> {
               locationCount > 0 ? 'Maps ($locationCount)' : 'No locations',
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: locationCount > 0 
-                    ? AppColors.primaryGreen
+                    ? AppColors.primaryAccent
                     : AppColors.hintText,
                 fontWeight: FontWeight.w500,
               ),

@@ -189,7 +189,8 @@ class AIResponseParser {
         return ItineraryModel.fromJson(json);
       }
     } catch (e) {
-      Logger.d('Failed to parse with strategy "$strategy": ${e.toString().substring(0, 100)}', tag: 'AIParser');
+      final errorMsg = e.toString();
+      Logger.d('Failed to parse with strategy "$strategy": ${errorMsg.length > 100 ? errorMsg.substring(0, 100) : errorMsg}', tag: 'AIParser');
     }
     
     return null;

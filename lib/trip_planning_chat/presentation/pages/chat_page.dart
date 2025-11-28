@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_styles.dart';
 import '../blocs/message_based_chat_bloc.dart';
@@ -11,10 +12,11 @@ import '../../../shared/navigation/app_router.dart';
 
 /// ** Chat Page - Message Based**
 /// 
-/// Uses the new message-based approach where each message can contain:
-/// - Text only (follow-up questions, responses)
-/// - Itinerary only 
-/// - Both text and itinerary combined
+/// Modern chat interface with enhanced UI:
+/// - Glassmorphic input area with gradient accents
+/// - Animated "View Details" button positioned above input
+/// - Smooth typing indicator with animated dots
+/// - Adaptive message bubbles with subtle animations
 class ChatPage extends StatefulWidget {
   final String? initialPrompt;
   final String? sessionId;
@@ -29,15 +31,29 @@ class ChatPage extends StatefulWidget {
   State<ChatPage> createState() => _ChatPageState();
 }
 
-class _ChatPageState extends State<ChatPage> {
+class _ChatPageState extends State<ChatPage> with SingleTickerProviderStateMixin {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _inputFocusNode = FocusNode();
   late MessageBasedChatBloc _chatBloc;
+  late AnimationController _typingAnimationController;
+  bool _isInputFocused = false;
 
   @override
   void initState() {
     super.initState();
     _chatBloc = context.read<MessageBasedChatBloc>();
+    _typingAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+    
+    _inputFocusNode.addListener(() {
+      setState(() {
+        _isInputFocused = _inputFocusNode.hasFocus;
+      });
+    });
+    
     _initializeChat();
   }
 
@@ -65,6 +81,8 @@ class _ChatPageState extends State<ChatPage> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _inputFocusNode.dispose();
+    _typingAnimationController.dispose();
     super.dispose();
   }
 
@@ -159,6 +177,9 @@ class _ChatPageState extends State<ChatPage> {
             SnackBar(
               content: Text(state.message),
               backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              margin: const EdgeInsets.all(AppDimensions.paddingM),
             ),
           );
         }
@@ -169,29 +190,130 @@ class _ChatPageState extends State<ChatPage> {
         
         return Scaffold(
           backgroundColor: AppColors.backgroundColor,
-          appBar: AppBar(
-            title: Text(_getTripTitle(state)),
-            backgroundColor: AppColors.white,
-            foregroundColor: AppColors.primaryText,
-            elevation: 0,
-          ),
+          appBar: _buildModernAppBar(state, hasItinerary),
           body: Column(
             children: [
               Expanded(child: _buildChatArea(state)),
-              _buildInputArea(state),
+              // View Details button positioned above input area when itinerary exists
+              if (hasItinerary) _buildViewDetailsButton(state),
+              _buildEnhancedInputArea(state),
             ],
           ),
-          floatingActionButton: hasItinerary
-              ? FloatingActionButton.extended(
-                  heroTag: 'chat_view_details_fab',
-                  onPressed: () => _navigateToDetailView(state),
-                  icon: const Icon(Icons.visibility),
-                  label: const Text('View Details'),
-                  backgroundColor: AppColors.primaryGreen,
-                )
-              : null,
         );
       },
+    );
+  }
+
+  PreferredSizeWidget _buildModernAppBar(ChatState state, bool hasItinerary) {
+    return AppBar(
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _getTripTitle(state),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          if (state is ChatMessageSending)
+            const Text(
+              'AI is typing...',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.normal,
+                color: AppColors.secondaryText,
+              ),
+            ),
+        ],
+      ),
+      backgroundColor: AppColors.white,
+      foregroundColor: AppColors.primaryText,
+      elevation: 0,
+      surfaceTintColor: Colors.transparent,
+      shadowColor: AppColors.grey.withOpacity(0.1),
+      scrolledUnderElevation: 1,
+      systemOverlayStyle: SystemUiOverlayStyle.dark,
+    );
+  }
+
+  /// View Details button positioned above input area - prevents overlap
+  Widget _buildViewDetailsButton(ChatState state) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppDimensions.paddingM,
+        vertical: AppDimensions.paddingS,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        border: Border(
+          top: BorderSide(
+            color: AppColors.grey.withOpacity(0.1),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _navigateToDetailView(state),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppDimensions.paddingM,
+              vertical: AppDimensions.paddingS + 4,
+            ),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.primaryAccent.withOpacity(0.15),
+                  AppColors.primaryAccent.withOpacity(0.05),
+                ],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.primaryAccent.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryAccent.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.map_outlined,
+                    size: 18,
+                    color: AppColors.primaryAccent,
+                  ),
+                ),
+                const SizedBox(width: AppDimensions.paddingS),
+                Text(
+                  'View Full Itinerary Details',
+                  style: TextStyle(
+                    color: AppColors.primaryAccent,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(width: AppDimensions.paddingXS),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  size: 14,
+                  color: AppColors.primaryAccent,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -224,22 +346,90 @@ class _ChatPageState extends State<ChatPage> {
 
     if (messages.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.chat_bubble_outline,
-              size: 64,
-              color: AppColors.grey,
-            ),
-            const SizedBox(height: AppDimensions.paddingM),
-            Text(
-              'Start a conversation',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppColors.grey,
+        child: Padding(
+          padding: const EdgeInsets.all(AppDimensions.paddingXL),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Animated AI icon
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primaryAccent.withOpacity(0.2),
+                      AppColors.primaryAccent.withOpacity(0.1),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.primaryAccent,
+                          AppColors.primaryAccent.withOpacity(0.8),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primaryAccent.withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.auto_awesome,
+                        size: 28,
+                        color: AppColors.white,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: AppDimensions.paddingL),
+              Text(
+                'Hi! I\'m your AI Travel Assistant',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primaryText,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppDimensions.paddingS),
+              Text(
+                'Tell me about your dream destination and I\'ll help you plan the perfect trip!',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.secondaryText,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppDimensions.paddingXL),
+              // Suggestion chips
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: AppDimensions.paddingS,
+                runSpacing: AppDimensions.paddingS,
+                children: [
+                  _buildSuggestionChip('Weekend in Paris 🗼'),
+                  _buildSuggestionChip('Beach vacation 🏖️'),
+                  _buildSuggestionChip('Adventure trip 🏔️'),
+                ],
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -273,28 +463,67 @@ class _ChatPageState extends State<ChatPage> {
       padding: const EdgeInsets.all(AppDimensions.paddingM),
       child: Row(
         children: [
+          // AI Avatar
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.primaryAccent,
+                  AppColors.primaryAccent.withOpacity(0.7),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primaryAccent.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.auto_awesome,
+                color: AppColors.white,
+                size: 18,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppDimensions.paddingS),
+          // Typing indicator bubble
           Container(
             padding: const EdgeInsets.symmetric(
               horizontal: AppDimensions.paddingM,
-              vertical: AppDimensions.paddingS,
+              vertical: AppDimensions.paddingS + 4,
             ),
             decoration: BoxDecoration(
-              color: AppColors.lightGrey,
-              borderRadius: BorderRadius.circular(16),
+              color: AppColors.white,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(4),
+                topRight: Radius.circular(18),
+                bottomLeft: Radius.circular(18),
+                bottomRight: Radius.circular(18),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.grey.withOpacity(0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
-                  ),
-                ),
-                const SizedBox(width: AppDimensions.paddingS),
-                const Text('AI is thinking...'),
+                _buildAnimatedDot(0),
+                const SizedBox(width: 4),
+                _buildAnimatedDot(1),
+                const SizedBox(width: 4),
+                _buildAnimatedDot(2),
               ],
             ),
           ),
@@ -303,66 +532,195 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Widget _buildInputArea(ChatState state) {
+  Widget _buildAnimatedDot(int index) {
+    return AnimatedBuilder(
+      animation: _typingAnimationController,
+      builder: (context, child) {
+        final double offset = (index * 0.2);
+        final double value = (_typingAnimationController.value + offset) % 1.0;
+        final double bounce = (value < 0.5)
+            ? Curves.easeOut.transform(value * 2)
+            : Curves.easeIn.transform((1 - value) * 2);
+        
+        return Transform.translate(
+          offset: Offset(0, -4 * bounce),
+          child: Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: AppColors.primaryAccent.withOpacity(0.6 + (0.4 * bounce)),
+              shape: BoxShape.circle,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEnhancedInputArea(ChatState state) {
     final isLoading = state is ChatLoading || state is ChatMessageSending;
     
     return Container(
-      padding: const EdgeInsets.all(AppDimensions.paddingM),
+      padding: const EdgeInsets.fromLTRB(
+        AppDimensions.paddingM,
+        AppDimensions.paddingS,
+        AppDimensions.paddingM,
+        AppDimensions.paddingM,
+      ),
       decoration: BoxDecoration(
         color: AppColors.white,
         boxShadow: [
           BoxShadow(
-            offset: const Offset(0, -1),
-            blurRadius: 4,
-            color: AppColors.grey.withOpacity(0.1),
+            offset: const Offset(0, -4),
+            blurRadius: 12,
+            color: AppColors.grey.withOpacity(0.08),
           ),
         ],
       ),
       child: SafeArea(
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _messageController,
-                enabled: !isLoading,
-                decoration: InputDecoration(
-                  hintText: 'Type your message...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide(color: AppColors.grey.withOpacity(0.3)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide(color: AppColors.grey.withOpacity(0.3)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: const BorderSide(color: AppColors.primaryGreen),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: AppDimensions.paddingM,
-                    vertical: AppDimensions.paddingS,
+        top: false,
+        bottom: false,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: _isInputFocused 
+                ? AppColors.primaryAccent.withOpacity(0.05)
+                : AppColors.lightGrey.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: _isInputFocused
+                  ? AppColors.primaryAccent.withOpacity(0.3)
+                  : Colors.transparent,
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              
+              // Text input
+              Expanded(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 120),
+                  child: TextField(
+                    controller: _messageController,
+                    focusNode: _inputFocusNode,
+                    enabled: !isLoading,
+                    decoration: InputDecoration(
+                      hintText: isLoading 
+                          ? 'Waiting for AI response...'
+                          : 'Ask me anything about your trip...',
+                      hintStyle: TextStyle(
+                        color: AppColors.grey.withOpacity(0.7),
+                        fontSize: 15,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: AppDimensions.paddingS,
+                        vertical: AppDimensions.paddingS,
+                      ),
+                    ),
+                    maxLines: null,
+                    textCapitalization: TextCapitalization.sentences,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: AppColors.primaryText,
+                    ),
+                    onSubmitted: isLoading ? null : (_) => _sendMessage(),
                   ),
                 ),
-                maxLines: null,
-                textCapitalization: TextCapitalization.sentences,
-                onSubmitted: isLoading ? null : (_) => _sendMessage(),
               ),
-            ),
-            const SizedBox(width: AppDimensions.paddingS),
-            FloatingActionButton(
-              onPressed: isLoading ? null : _sendMessage,
-              mini: true,
-              backgroundColor: isLoading 
-                  ? AppColors.grey 
-                  : AppColors.primaryGreen,
-              child: Icon(
-                Icons.send,
-                color: AppColors.white,
-                size: 20,
+              // Send button
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 44,
+                height: 44,
+                child: Material(
+                  color: isLoading 
+                      ? AppColors.grey.withOpacity(0.3)
+                      : AppColors.primaryAccent,
+                  borderRadius: BorderRadius.circular(22),
+                  child: InkWell(
+                    onTap: isLoading ? null : _sendMessage,
+                    borderRadius: BorderRadius.circular(22),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(22),
+                        boxShadow: isLoading ? null : [
+                          BoxShadow(
+                            color: AppColors.primaryAccent.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: isLoading
+                            ? SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    AppColors.white.withOpacity(0.7),
+                                  ),
+                                ),
+                              )
+                            : const Icon(
+                                Icons.keyboard_arrow_right_rounded,
+                                color: AppColors.white,
+                                size: 22,
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Suggestion chip for empty chat state
+  Widget _buildSuggestionChip(String text) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          _messageController.text = text;
+          _inputFocusNode.requestFocus();
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppDimensions.paddingM,
+            vertical: AppDimensions.paddingS,
+          ),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: AppColors.grey.withOpacity(0.2),
+              width: 1,
             ),
-          ],
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.grey.withOpacity(0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Text(
+            text,
+            style: TextStyle(
+              color: AppColors.primaryText,
+              fontSize: 13,
+            ),
+          ),
         ),
       ),
     );
@@ -472,7 +830,7 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  /// Navigate to ItineraryDetailPage with the first itinerary found
+  /// Navigate to ItineraryDetailPage with the latest itinerary found
   void _navigateToDetailView(ChatState state) {
     List<dynamic> messages = [];
     String? sessionId;
@@ -491,15 +849,15 @@ class _ChatPageState extends State<ChatPage> {
       sessionId = state.sessionId;
     }
 
-    // Find the first message with an itinerary
+    // Find the LATEST message with an itinerary (not the first one)
+    // This ensures we get the most up-to-date itinerary with all modifications
     ChatMessageModel? messageWithItinerary;
-    try {
-      messageWithItinerary = messages.firstWhere(
-        (msg) => msg is ChatMessageModel && msg.hasItinerary,
-      ) as ChatMessageModel?;
-    } catch (e) {
-      // No message with itinerary found
-      messageWithItinerary = null;
+    for (int i = messages.length - 1; i >= 0; i--) {
+      final msg = messages[i];
+      if (msg is ChatMessageModel && msg.hasItinerary) {
+        messageWithItinerary = msg;
+        break;
+      }
     }
 
     if (messageWithItinerary != null && sessionId != null) {

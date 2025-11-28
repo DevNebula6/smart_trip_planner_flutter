@@ -27,6 +27,10 @@ class UnknownFailure extends Failure {
   const UnknownFailure(super.message);
 }
 
+class ApiFailure extends Failure {
+  const ApiFailure(super.message);
+}
+
 // Custom exceptions
 class ServerException implements Exception {
   final String message;

@@ -26,13 +26,16 @@ class HiveItineraryModelAdapter extends TypeAdapter<HiveItineraryModel> {
       createdAt: fields[6] as DateTime?,
       updatedAt: fields[7] as DateTime?,
       sessionId: fields[8] as String?,
+      transportJson: fields[9] as String?,
+      staysJson: fields[10] as String?,
+      budgetJson: fields[11] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, HiveItineraryModel obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -50,7 +53,13 @@ class HiveItineraryModelAdapter extends TypeAdapter<HiveItineraryModel> {
       ..writeByte(7)
       ..write(obj.updatedAt)
       ..writeByte(8)
-      ..write(obj.sessionId);
+      ..write(obj.sessionId)
+      ..writeByte(9)
+      ..write(obj.transportJson)
+      ..writeByte(10)
+      ..write(obj.staysJson)
+      ..writeByte(11)
+      ..write(obj.budgetJson);
   }
 
   @override

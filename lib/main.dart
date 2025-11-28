@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:smart_trip_planner_flutter/ai_agent/services/ai_agent_service_export.dart';
 import 'package:smart_trip_planner_flutter/ai_agent/services/gemini_service.dart';
 import 'package:smart_trip_planner_flutter/core/storage/hive_storage_service.dart';
@@ -14,6 +15,7 @@ import 'package:smart_trip_planner_flutter/trip_planning_chat/presentation/blocs
 import 'package:smart_trip_planner_flutter/trip_planning_chat/presentation/blocs/message_based_chat_bloc.dart';
 import 'package:smart_trip_planner_flutter/auth/presentation/bloc/auth_event.dart';
 import 'package:smart_trip_planner_flutter/core/utils/helpers.dart';
+import 'package:smart_trip_planner_flutter/features/discover/discover_dependencies.dart';
 
 
 void main() async {
@@ -21,6 +23,28 @@ void main() async {
   
   // Load environment variables
   await dotenv.load(fileName: ".env");
+  
+  // Debug: Log all loaded environment variables (only key names, not values for security)
+  Logger.d('Loaded .env variables: ${dotenv.env.keys.toList()}', tag: 'Main');
+  
+  // Initialize Supabase
+  try {
+    final supabaseUrl = dotenv.env['SUPABASE_URL'];
+    final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'];
+    
+    if (supabaseUrl != null && supabaseUrl.isNotEmpty && 
+        supabaseAnonKey != null && supabaseAnonKey.isNotEmpty) {
+      await Supabase.initialize(
+        url: supabaseUrl,
+        anonKey: supabaseAnonKey,
+      );
+      Logger.d('✅ Supabase initialized successfully', tag: 'Main');
+    } else {
+      Logger.w('⚠️ Supabase credentials not found in .env, will use local cache only', tag: 'Main');
+    }
+  } catch (e) {
+    Logger.e('⚠️ Failed to initialize Supabase (will use local cache): $e', tag: 'Main');
+  }
   
   // Initialize Hive storage before running the app
   try {
@@ -85,12 +109,25 @@ class MainApp extends StatelessWidget {
     String? googleSearchEngineId = dotenv.env['GOOGLE_SEARCH_ENGINE_ID'];
     String? bingSearchApiKey = dotenv.env['BING_SEARCH_API_KEY'];
     
+    // Get Google Places API key (for location verification)
+    String? googlePlacesApiKey = dotenv.env['GOOGLE_PLACES_API_KEY'];
+    
+    // Get RapidAPI key (for flights and hotels)
+    String? rapidApiKey = dotenv.env['RAPIDAPI_KEY'];
+    
+    // Debug: Log loaded API keys (only show if present or not)
+    Logger.d('Environment variables loaded:', tag: 'Main');
+    Logger.d('  - GOOGLE_PLACES_API_KEY: ${googlePlacesApiKey != null && googlePlacesApiKey.isNotEmpty ? "✓ (${googlePlacesApiKey.length} chars)" : "✗ missing"}', tag: 'Main');
+    Logger.d('  - RAPIDAPI_KEY: ${rapidApiKey != null && rapidApiKey.isNotEmpty ? "✓ (${rapidApiKey.length} chars)" : "✗ missing"}', tag: 'Main');
+    
     // Use Hive-enhanced AI service factory with web search support
     final aiService = AIAgentServiceFactory.create(
       geminiApiKey: apiKey,
       googleSearchApiKey: googleSearchApiKey,
       googleSearchEngineId: googleSearchEngineId,
       bingSearchApiKey: bingSearchApiKey,
+      googlePlacesApiKey: googlePlacesApiKey,
+      rapidApiKey: rapidApiKey,
     );
     final authRepository = MockAuthDatasource();
 
@@ -107,6 +144,10 @@ class MainApp extends StatelessWidget {
             aiService: aiService as GeminiAIService,
             storageService: HiveStorageService.instance,
           ),
+        ),
+        // Discover feature Bloc
+        BlocProvider(
+          create: (context) => DiscoverDependencies.createDiscoverBloc(),
         ),
       ],
       child: MaterialApp(

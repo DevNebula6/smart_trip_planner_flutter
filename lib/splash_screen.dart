@@ -72,7 +72,7 @@ class _SplashScreenState extends State<SplashScreen>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppColors.primaryGreen.withOpacity(0.1),
+              AppColors.primaryAccent.withOpacity(0.1),
               AppColors.backgroundColor,
               AppColors.orange.withOpacity(0.05),
             ],
@@ -91,11 +91,11 @@ class _SplashScreenState extends State<SplashScreen>
                     width: 120,
                     height: 120,
                     decoration: BoxDecoration(
-                      color: AppColors.primaryGreen.withOpacity(0.1),
+                      color: AppColors.primaryAccent.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(AppDimensions.radiusXXL),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.primaryGreen.withOpacity(0.2),
+                          color: AppColors.primaryAccent.withOpacity(0.2),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
                         ),
@@ -104,7 +104,7 @@ class _SplashScreenState extends State<SplashScreen>
                     child: const Icon(
                       Icons.flight_takeoff,
                       size: 60,
-                      color: AppColors.primaryGreen,
+                      color: AppColors.primaryAccent,
                     ),
                   ),
                   
@@ -113,7 +113,7 @@ class _SplashScreenState extends State<SplashScreen>
                   // App Name with Gradient
                   ShaderMask(
                     shaderCallback: (bounds) => LinearGradient(
-                      colors: [AppColors.primaryGreen, AppColors.orange],
+                      colors: [AppColors.primaryAccent, AppColors.orange],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ).createShader(bounds),
@@ -148,7 +148,7 @@ class _SplashScreenState extends State<SplashScreen>
                     child: CircularProgressIndicator(
                       strokeWidth: 3,
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        AppColors.primaryGreen.withOpacity(0.6),
+                        AppColors.primaryAccent.withOpacity(0.6),
                       ),
                     ),
                   ),

@@ -88,7 +88,7 @@ class _SignUpSignInPageState extends State<SignUpSignInPage>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text('Account created successfully! Welcome to Itinera AI!'),
-              backgroundColor: AppColors.primaryGreen,
+              backgroundColor: AppColors.primaryAccent,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 2),
             ),
@@ -100,7 +100,7 @@ class _SignUpSignInPageState extends State<SignUpSignInPage>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text('Welcome back! Login successful.'),
-              backgroundColor: AppColors.primaryGreen,
+              backgroundColor: AppColors.primaryAccent,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 2),
             ),
@@ -153,7 +153,7 @@ class _SignUpSignInPageState extends State<SignUpSignInPage>
           backgroundColor: AppColors.backgroundColor,
           body: Center(
             child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryAccent),
             ),
           ),
         );
@@ -359,7 +359,7 @@ class _SignUpSignInPageState extends State<SignUpSignInPage>
                     width: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryAccent),
                     ),
                   )
                 : Row(
@@ -453,7 +453,7 @@ class _SignUpSignInPageState extends State<SignUpSignInPage>
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-              borderSide: const BorderSide(color: AppColors.primaryGreen, width: 2),
+              borderSide: const BorderSide(color: AppColors.primaryAccent, width: 2),
             ),
             filled: true,
             fillColor: AppColors.white,
@@ -519,7 +519,7 @@ class _SignUpSignInPageState extends State<SignUpSignInPage>
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-              borderSide: const BorderSide(color: AppColors.primaryGreen, width: 2),
+              borderSide: const BorderSide(color: AppColors.primaryAccent, width: 2),
             ),
             filled: true,
             fillColor: AppColors.white,
@@ -585,7 +585,7 @@ class _SignUpSignInPageState extends State<SignUpSignInPage>
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-              borderSide: const BorderSide(color: AppColors.primaryGreen, width: 2),
+              borderSide: const BorderSide(color: AppColors.primaryAccent, width: 2),
             ),
             filled: true,
             fillColor: AppColors.white,
@@ -621,7 +621,7 @@ class _SignUpSignInPageState extends State<SignUpSignInPage>
                   _rememberMe = value ?? false;
                 });
               },
-              activeColor: AppColors.primaryGreen,
+              activeColor: AppColors.primaryAccent,
             ),
             const Text(
               'Remember me',
@@ -679,7 +679,7 @@ class _SignUpSignInPageState extends State<SignUpSignInPage>
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryGreen,
+              backgroundColor: AppColors.primaryAccent,
               foregroundColor: AppColors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppDimensions.radiusL),
@@ -727,7 +727,7 @@ class _SignUpSignInPageState extends State<SignUpSignInPage>
             _authMode == AuthMode.signUp ? 'Sign In' : 'Sign Up',
             style: const TextStyle(
               fontSize: 14,
-              color: AppColors.primaryGreen,
+              color: AppColors.primaryAccent,
               fontWeight: FontWeight.w600,
             ),
           ),

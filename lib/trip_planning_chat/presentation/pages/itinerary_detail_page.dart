@@ -108,9 +108,9 @@ class _ItineraryDetailPageState extends State<ItineraryDetailPage>
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.primaryGreen,
+        backgroundColor: AppColors.primaryAccent,
         elevation: 0,
-        toolbarHeight: 80, // Increased height to accommodate 2-line title
+        toolbarHeight: 100, // Increased height to accommodate 2-line title
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
@@ -161,9 +161,9 @@ class _ItineraryDetailPageState extends State<ItineraryDetailPage>
             color: Colors.white,
             child: TabBar(
               controller: _tabController,
-              labelColor: AppColors.primaryGreen,
+              labelColor: AppColors.primaryAccent,
               unselectedLabelColor: AppColors.secondaryText,
-              indicatorColor: AppColors.primaryGreen,
+              indicatorColor: AppColors.primaryAccent,
               indicatorWeight: 3,
               labelStyle: const TextStyle(
                 fontSize: 12,
@@ -212,34 +212,22 @@ class _ItineraryDetailPageState extends State<ItineraryDetailPage>
           ),
         ],
       ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(AppDimensions.paddingM),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: OutlinedButton.icon(
-            onPressed: _modifyTrip,
-            icon: const Icon(Icons.edit_outlined),
-            label: const Text('Modify Trip'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primaryGreen,
-              side: const BorderSide(color: AppColors.primaryGreen, width: 2),
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppDimensions.radiusM),
-              ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
+      floatingActionButton: SizedBox(
+        width: 200,
+        child: ElevatedButton.icon(
+          onPressed: _modifyTrip,
+          icon: const Icon(Icons.edit_outlined),
+          label: const Text('Modify Trip'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.white,
+            backgroundColor: AppColors.primaryAccent,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppDimensions.radiusM),
             ),
           ),
         ),
-      ),
-    );
+      ),    );
   }
 }

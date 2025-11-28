@@ -1,16 +1,21 @@
 
-/// **Simple Itinerary Models - Hive Compatible**
+/// **Itinerary Models - Extended with Transport, Stays & Budget**
 /// 
-/// Matches the exact JSON structure required by assignment (Spec A):
+/// Extended JSON structure for complete trip planning:
 /// {
 ///   "title": "Kyoto 5-Day Solo Trip",
 ///   "startDate": "2025-04-10", 
 ///   "endDate": "2025-04-15",
-///   "days": [...]
+///   "days": [...],
+///   "transport": {...},
+///   "stays": [...],
+///   "budget": {...}
 /// }
 library;
 
-/// Main itinerary model
+import 'booking_models.dart';
+
+/// Main itinerary model with transport, stays, and budget
 class ItineraryModel {
   /// Unique identifier for the itinerary
   String id;
@@ -27,6 +32,15 @@ class ItineraryModel {
   /// List of daily plans
   List<DayPlanModel> days;
   
+  /// Transport plan (flights, trains, local transport)
+  TransportPlan? transport;
+  
+  /// Accommodation stays
+  StaysPlan? stays;
+  
+  /// Budget breakdown and tracking
+  BudgetPlan? budget;
+  
   /// User's original prompt that generated this itinerary
   String? originalPrompt;
   
@@ -42,22 +56,28 @@ class ItineraryModel {
     required this.startDate,
     required this.endDate,
     required this.days,
+    this.transport,
+    this.stays,
+    this.budget,
     this.originalPrompt,
     this.createdAt,
     this.updatedAt,
   });
 
-  /// Manual JSON serialization - simple and clean
+  /// Manual JSON serialization - includes transport, stays, budget
   Map<String, dynamic> toJson() {
     return {
       'title': title,
       'startDate': startDate,
       'endDate': endDate,
       'days': days.map((day) => day.toJson()).toList(),
+      if (transport != null) 'transport': transport!.toJson(),
+      if (stays != null) 'stays': stays!.toJson(),
+      if (budget != null) 'budget': budget!.toJson(),
     };
   }
 
-  /// Manual JSON deserialization
+  /// Manual JSON deserialization - handles extended fields
   factory ItineraryModel.fromJson(Map<String, dynamic> json) {
     // Parse days from JSON
     final daysData = json['days'] as List<dynamic>;
@@ -71,12 +91,73 @@ class ItineraryModel {
       startDate: json['startDate'] as String,
       endDate: json['endDate'] as String,
       days: daysList,
+      transport: json['transport'] != null 
+          ? TransportPlan.fromJson(json['transport'] as Map<String, dynamic>)
+          : null,
+      stays: json['stays'] != null 
+          ? StaysPlan.fromJson(json['stays'] as Map<String, dynamic>)
+          : null,
+      budget: json['budget'] != null 
+          ? BudgetPlan.fromJson(json['budget'] as Map<String, dynamic>)
+          : null,
       createdAt: DateTime.now(),
     );
   }
   
   /// Calculate trip duration in days
   int get durationDays => days.length;
+  
+  /// Check if transport is set
+  bool get hasTransport => transport != null && transport!.allSegments.isNotEmpty;
+  
+  /// Check if stays are set
+  bool get hasStays => stays != null && stays!.stays.isNotEmpty;
+  
+  /// Check if budget is set
+  bool get hasBudget => budget != null;
+  
+  /// Get total estimated cost
+  double get totalEstimatedCost {
+    double total = 0;
+    if (transport != null) total += transport!.totalCost;
+    if (stays != null) total += stays!.totalCost;
+    if (budget != null) {
+      total += budget!.estimated.food;
+      total += budget!.estimated.activities;
+      total += budget!.estimated.shopping;
+      total += budget!.estimated.misc;
+    }
+    return total;
+  }
+  
+  /// Create a copy with updated fields
+  ItineraryModel copyWith({
+    String? id,
+    String? title,
+    String? startDate,
+    String? endDate,
+    List<DayPlanModel>? days,
+    TransportPlan? transport,
+    StaysPlan? stays,
+    BudgetPlan? budget,
+    String? originalPrompt,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return ItineraryModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      days: days ?? this.days,
+      transport: transport ?? this.transport,
+      stays: stays ?? this.stays,
+      budget: budget ?? this.budget,
+      originalPrompt: originalPrompt ?? this.originalPrompt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 }
 
 /// Simple day plan model

@@ -2,102 +2,102 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // ═══════════════════════════════════════════════════════════════
-  // 🎨 MODERN SOPHISTICATED PALETTE - Premium Travel Experience
+  // � NATURE-INSPIRED PALETTE - Calm, Serene Travel Experience
   // ═══════════════════════════════════════════════════════════════
   
-  // PRIMARY - Deep Indigo/Royal Purple (Trust, Sophistication, Premium)
-  static const Color primary = Color(0xFF4F46E5);            // Indigo-600: Main brand color
-  static const Color primaryDark = Color(0xFF4338CA);        // Indigo-700: Darker variant
-  static const Color primaryLight = Color(0xFF6366F1);       // Indigo-500: Lighter variant
-  static const Color primaryPale = Color(0xFF818CF8);        // Indigo-400: Very light
-  static const Color primaryVeryLight = Color(0xFFE0E7FF);   // Indigo-100: Subtle backgrounds
+  // PRIMARY - Sage Green (Calm, Nature, Peace)
+  static const Color primary = Color(0xFFB8CAB8);            // Main sage green - backgrounds
+  static const Color primaryDark = Color(0xFF9DB09D);        // Deeper sage - hover states
+  static const Color primaryLight = Color(0xFFC5D5C5);       // Lighter sage - subtle backgrounds
+  static const Color primaryPale = Color(0xFFD8E5D8);        // Very pale sage - cards
+  static const Color primaryVeryLight = Color(0xFFE8F3E8);   // Almost white mint - subtle tints
   
-  // SECONDARY - Electric Blue/Cyan (Innovation, Technology, Clarity)
-  static const Color secondary = Color(0xFF06B6D4);          // Cyan-500: Secondary actions
-  static const Color secondaryDark = Color(0xFF0891B2);      // Cyan-600: Darker variant
-  static const Color secondaryLight = Color(0xFF22D3EE);     // Cyan-400: Lighter variant
-  static const Color secondaryPale = Color(0xFF67E8F9);      // Cyan-300: Very light
-  static const Color secondaryVeryLight = Color(0xFFCFFAFE); // Cyan-100: Subtle backgrounds
+  // SECONDARY - Cream/Beige (Warmth, Comfort, Inviting)
+  static const Color secondary = Color(0xFFF4F1E8);          // Primary cream - card backgrounds
+  static const Color secondaryDark = Color(0xFFEFEAE0);      // Warm beige - deeper cards
+  static const Color secondaryLight = Color(0xFFFAF8F3);     // Pale ivory - lightest cards
+  static const Color secondaryPale = Color(0xFFF7F4ED);      // Light sand - subtle backgrounds
+  static const Color secondaryVeryLight = Color(0xFFFAF8F5); // Almost white cream
   
-  // ACCENT - Vibrant Coral/Rose (Energy, Action, Warmth)
-  static const Color accent = Color(0xFFFF5A5F);             // Vibrant coral-red
-  static const Color accentDark = Color(0xFFE14950);         // Darker coral
-  static const Color accentLight = Color(0xFFFF7B7F);        // Lighter coral
-  static const Color accentPale = Color(0xFFFFA5A8);         // Very light coral
-  static const Color accentVeryLight = Color(0xFFFFE8E9);    // Subtle coral background
+  // ACCENT - Forest Green (Trust, Nature, Readability)
+  static const Color accent = Color(0xFF1F2E1F);             // Dark forest green - primary text
+  static const Color accentDark = Color(0xFF2C3E2C);         // Deep green - headings
+  static const Color accentLight = Color(0xFF3D5A3D);        // Mid-tone green - secondary text
+  static const Color accentPale = Color(0xFF4A6A4A);         // Moss green - icons
+  static const Color accentVeryLight = Color(0xFF5C7C5C);    // Subtle emerald - disabled text
   
-  // TERTIARY - Emerald Green (Success, Growth, Nature)
-  static const Color tertiary = Color(0xFF10B981);           // Emerald-500: Success & nature
-  static const Color tertiaryDark = Color(0xFF059669);       // Emerald-600: Darker variant
-  static const Color tertiaryLight = Color(0xFF34D399);      // Emerald-400: Lighter variant
-  static const Color tertiaryPale = Color(0xFF6EE7B7);       // Emerald-300: Very light
-  static const Color tertiaryVeryLight = Color(0xFFD1FAE5);  // Emerald-100: Subtle backgrounds
+  // TERTIARY - Warm Earth Tones (Highlights, Warmth, Energy)
+  static const Color tertiary = Color(0xFFFFD700);           // Sunset gold - highlights
+  static const Color tertiaryDark = Color(0xFFE07856);       // Terracotta - warm accents
+  static const Color tertiaryLight = Color(0xFFD4A574);      // Warm clay - subtle warmth
+  static const Color tertiaryPale = Color(0xFFFBE5A0);       // Soft amber - very light
+  static const Color tertiaryVeryLight = Color(0xFFFFE5D9);  // Pale peach - backgrounds
   
-  // QUATERNARY - Amber/Gold (Premium, Luxury, Warmth)
-  static const Color quaternary = Color(0xFFF59E0B);         // Amber-500: Premium feel
-  static const Color quaternaryDark = Color(0xFFD97706);     // Amber-600: Darker variant
-  static const Color quaternaryLight = Color(0xFFFBBF24);    // Amber-400: Lighter variant
-  static const Color quaternaryPale = Color(0xFFFCD34D);     // Amber-300: Very light
-  static const Color quaternaryVeryLight = Color(0xFFFEF3C7); // Amber-100: Subtle backgrounds
+  // QUATERNARY - Additional Nature Tones
+  static const Color quaternary = Color(0xFF8B9D83);         // Muted olive green
+  static const Color quaternaryDark = Color(0xFF6B7C65);     // Deep olive
+  static const Color quaternaryLight = Color(0xFFA5B59D);    // Light olive
+  static const Color quaternaryPale = Color(0xFFC2CDC0);     // Very light olive
+  static const Color quaternaryVeryLight = Color(0xFFDDE5DC); // Almost white olive
   
-  // NEUTRAL - Modern grays with blue undertones
+  // NEUTRAL - Warm Grays (Supporting Colors)
   static const Color white = Color(0xFFFFFFFF);
   static const Color black = Color(0xFF000000);
-  static const Color grey50 = Color(0xFFF9FAFB);             // Lightest
-  static const Color grey100 = Color(0xFFF3F4F6);
-  static const Color grey200 = Color(0xFFE5E7EB);
-  static const Color grey300 = Color(0xFFD1D5DB);
-  static const Color grey400 = Color(0xFF9CA3AF);
-  static const Color grey500 = Color(0xFF6B7280);
-  static const Color grey600 = Color(0xFF4B5563);
-  static const Color grey700 = Color(0xFF374151);
-  static const Color grey800 = Color(0xFF1F2937);
-  static const Color grey900 = Color(0xFF111827);            // Darkest
+  static const Color grey50 = Color(0xFFF5F5F0);             // Warm almost-white
+  static const Color grey100 = Color(0xFFEBEBE6);
+  static const Color grey200 = Color(0xFFE0E0D8);
+  static const Color grey300 = Color(0xFFD0D0C8);
+  static const Color grey400 = Color(0xFFB0B0A8);
+  static const Color grey500 = Color(0xFF909088);            // Warm medium grey
+  static const Color grey600 = Color(0xFF707068);            // Warm medium-dark grey
+  static const Color grey700 = Color(0xFF505048);            // Warm dark grey
+  static const Color grey800 = Color(0xFF303028);            // Warm very dark grey
+  static const Color grey900 = Color(0xFF1A1A18);            // Warm almost black
   
   // Convenience aliases for neutral colors
-  static const Color lightGrey = grey100;
+  static const Color lightGrey = grey200;
   static const Color mediumGrey = grey500;
   static const Color darkGrey = grey700;
   static const Color slate = grey600;
   static const Color grey = grey400;
   
-  // BACKGROUND COLORS - Clean, modern, with subtle tints
-  static const Color backgroundColor = Color(0xFFFAFBFC);    // Subtle blue-grey tint
-  static const Color cardBackground = Color(0xFFFFFFFF);
-  static const Color inputBackground = Color(0xFFF8FAFC);    // Light slate tint
-  static const Color surfaceLight = grey50;
-  static const Color surfaceDark = grey900;
-  static const Color surfaceElevated = Color(0xFFFFFFFF);    // Cards, modals
+  // BACKGROUND COLORS - Natural, warm, inviting
+  static const Color backgroundColor = Color(0xFFE9F2E9);     // Main app background (light mint green)
+  static const Color cardBackground = secondary;              // Cream card background
+  static const Color inputBackground = white;                 // White input fields
+  static const Color surfaceLight = primaryVeryLight;         // Mint fresh for subtle surfaces
+  static const Color surfaceDark = accent;                    // Forest green for dark surfaces
+  static const Color surfaceElevated = secondary;             // Cream for elevated cards
   
-  // TEXT COLORS - Optimized for readability
-  static const Color primaryText = grey900;
-  static const Color secondaryText = grey600;
-  static const Color hintText = grey400;
-  static const Color mutedText = grey500;
-  static const Color onPrimary = white;                      // Text on primary color
-  static const Color onSecondary = white;                    // Text on secondary color
-  static const Color onAccent = white;                       // Text on accent color
-  static const Color onSurface = grey900;                    // Text on surface
+  // TEXT COLORS - Forest greens for readability
+  static const Color primaryText = accent;                    // Dark forest green
+  static const Color secondaryText = accentLight;             // Mid-tone green
+  static const Color hintText = grey400;                      // Warm grey
+  static const Color mutedText = grey500;                     // Medium warm grey
+  static const Color onPrimary = accent;                      // Dark green on sage
+  static const Color onSecondary = accent;                    // Dark green on cream
+  static const Color onAccent = white;                        // White on dark green
+  static const Color onSurface = accent;                      // Dark green on surfaces
   
-  // STATUS COLORS - Clear semantic meaning
-  static const Color success = tertiary;                     // Emerald green
-  static const Color successLight = tertiaryLight;
-  static const Color successDark = tertiaryDark;
+  // STATUS COLORS - Nature-inspired semantic colors
+  static const Color success = Color(0xFF10B981);             // Emerald green (keep vibrant for clarity)
+  static const Color successLight = Color(0xFF34D399);
+  static const Color successDark = Color(0xFF059669);
   
-  static const Color error = Color(0xFFEF4444);              // Red-500
-  static const Color errorLight = Color(0xFFF87171);         // Red-400
-  static const Color errorDark = Color(0xFFDC2626);          // Red-600
+  static const Color error = Color(0xFFDC2626);               // Muted red (less aggressive)
+  static const Color errorLight = Color(0xFFF87171);
+  static const Color errorDark = Color(0xFFB91C1C);
   
-  static const Color warning = quaternary;                   // Amber
-  static const Color warningLight = quaternaryLight;
-  static const Color warningDark = quaternaryDark;
+  static const Color warning = tertiary;                      // Sunset gold
+  static const Color warningLight = tertiaryLight;
+  static const Color warningDark = tertiaryDark;
   
-  static const Color info = secondary;                       // Cyan/Blue
-  static const Color infoLight = secondaryLight;
-  static const Color infoDark = secondaryDark;
+  static const Color info = Color(0xFF0891B2);                // Muted cyan (less tech-y)
+  static const Color infoLight = Color(0xFF22D3EE);
+  static const Color infoDark = Color(0xFF0E7490);
   
-  // CHAT COLORS - Modern and inviting
-  static const Color userBubble = primary;                   // Indigo gradient
+  // CHAT COLORS - Nature-inspired, calm
+  static const Color userBubble = primaryLight;               // Sage green for user
   static const Color userBubbleLight = primaryLight;
   static const Color aiBubble = white;
   static const Color aiBubbleBorder = grey200;
@@ -132,7 +132,7 @@ class AppColors {
   
   // LEGACY COMPATIBILITY - Deprecated but maintained for backwards compatibility
   @Deprecated('Use primary instead')
-  static const Color primaryGreen = primary;
+  static const Color primaryAccent = accent;
   
   @Deprecated('Use primaryLight instead')
   static const Color lightGreen = primaryLight;
@@ -211,382 +211,189 @@ class AppDimensions {
 
 class AppShadows {
   // ═══════════════════════════════════════════════════════════════
-  // 💫 MODERN SHADOW SYSTEM - Depth & Elegance
+  // 🌿 NATURAL SHADOW SYSTEM - Soft, Organic, Calm
   // ═══════════════════════════════════════════════════════════════
   
-  // STANDARD ELEVATION SHADOWS - Following Material Design 3 principles
-  static const BoxShadow xs = BoxShadow(
-    color: AppColors.shadowLight,
-    offset: Offset(0, 1),
-    blurRadius: 2,
-    spreadRadius: 0,
-  );
-  
-  static const BoxShadow sm = BoxShadow(
-    color: AppColors.shadowLight,
-    offset: Offset(0, 2),
-    blurRadius: 4,
-    spreadRadius: 0,
-  );
-  
-  static const BoxShadow md = BoxShadow(
-    color: AppColors.shadowMedium,
-    offset: Offset(0, 4),
-    blurRadius: 8,
-    spreadRadius: -1,
-  );
-  
-  static const BoxShadow lg = BoxShadow(
-    color: AppColors.shadowMedium,
-    offset: Offset(0, 8),
-    blurRadius: 16,
-    spreadRadius: -2,
-  );
-  
-  static const BoxShadow xl = BoxShadow(
-    color: AppColors.shadowHeavy,
-    offset: Offset(0, 12),
-    blurRadius: 24,
-    spreadRadius: -4,
-  );
-  
-  static const BoxShadow xxl = BoxShadow(
-    color: AppColors.shadowHeavy,
-    offset: Offset(0, 20),
-    blurRadius: 40,
-    spreadRadius: -8,
-  );
-  
-  // COLORED GLOW SHADOWS - For visual impact 
-  static const BoxShadow primaryGlow = BoxShadow(
-    color: AppColors.shadowPrimary,
-    offset: Offset(0, 4),
-    blurRadius: 20,
-    spreadRadius: 0,
-  );
-  
-  static const BoxShadow primaryGlowStrong = BoxShadow(
-    color: Color(0x404F46E5),  // Primary with 25% opacity
-    offset: Offset(0, 8),
-    blurRadius: 32,
-    spreadRadius: 0,
-  );
-  
-  static const BoxShadow secondaryGlow = BoxShadow(
-    color: Color(0x2606B6D4),  // Secondary with 15% opacity
-    offset: Offset(0, 4),
-    blurRadius: 20,
-    spreadRadius: 0,
-  );
-  
-  static const BoxShadow accentGlow = BoxShadow(
-    color: AppColors.shadowAccent,
-    offset: Offset(0, 4),
-    blurRadius: 20,
-    spreadRadius: 0,
-  );
-  
-  static const BoxShadow accentGlowStrong = BoxShadow(
-    color: Color(0x40FF5A5F),  // Accent with 25% opacity
-    offset: Offset(0, 8),
-    blurRadius: 32,
-    spreadRadius: 0,
-  );
-  
-  // INNER SHADOWS - For depth and pressed states
-  static const BoxShadow innerSm = BoxShadow(
-    color: AppColors.shadowLight,
-    offset: Offset(0, 1),
-    blurRadius: 2,
-    spreadRadius: -1,
-  );
-  
-  static const BoxShadow innerMd = BoxShadow(
-    color: AppColors.shadowMedium,
-    offset: Offset(0, 2),
-    blurRadius: 4,
-    spreadRadius: -2,
-  );
-  
-  // MULTI-LAYER SHADOWS - For realistic depth (use in List)
-  static const List<BoxShadow> card = [
+  // SOFT ELEVATION SHADOWS - Very subtle, natural depth
+  static const List<BoxShadow> xs = [
     BoxShadow(
-      color: AppColors.shadowLight,
+      color: Color(0x05000000),  // 2% black - barely visible
       offset: Offset(0, 1),
       blurRadius: 3,
       spreadRadius: 0,
     ),
+  ];
+  
+  static const List<BoxShadow> sm = [
     BoxShadow(
-      color: Color(0x05000000),
-      offset: Offset(0, 1),
-      blurRadius: 2,
+      color: Color(0x08000000),  // 3% black - soft shadow
+      offset: Offset(0, 2),
+      blurRadius: 8,
+      spreadRadius: 0,
+    ),
+  ];
+  
+  static const List<BoxShadow> md = [
+    BoxShadow(
+      color: Color(0x0A000000),  // 4% black
+      offset: Offset(0, 3),
+      blurRadius: 10,
+      spreadRadius: 0,
+    ),
+  ];
+  
+  static const List<BoxShadow> lg = [
+    BoxShadow(
+      color: Color(0x0D000000),  // 5% black
+      offset: Offset(0, 4),
+      blurRadius: 12,
+      spreadRadius: 0,
+    ),
+  ];
+  
+  static const List<BoxShadow> xl = [
+    BoxShadow(
+      color: Color(0x12000000),  // 7% black
+      offset: Offset(0, 8),
+      blurRadius: 20,
+      spreadRadius: 0,
+    ),
+  ];
+  
+  static const List<BoxShadow> xxl = [
+    BoxShadow(
+      color: Color(0x1A000000),  // 10% black - strongest shadow
+      offset: Offset(0, 12),
+      blurRadius: 30,
+      spreadRadius: 0,
+    ),
+  ];
+  
+  // CARD SHADOWS - Multi-layer for depth (like reference image)
+  static const List<BoxShadow> card = [
+    BoxShadow(
+      color: Color(0x0D000000),  // 5% black
+      offset: Offset(0, 4),
+      blurRadius: 12,
+      spreadRadius: 0,
+    ),
+    BoxShadow(
+      color: Color(0x05000000),  // 2% black - subtle second layer
+      offset: Offset(0, 2),
+      blurRadius: 6,
       spreadRadius: 0,
     ),
   ];
   
   static const List<BoxShadow> cardHover = [
     BoxShadow(
-      color: AppColors.shadowMedium,
-      offset: Offset(0, 4),
-      blurRadius: 12,
-      spreadRadius: -1,
+      color: Color(0x12000000),  // 7% black - lifted effect
+      offset: Offset(0, 6),
+      blurRadius: 16,
+      spreadRadius: 0,
     ),
     BoxShadow(
-      color: Color(0x08000000),
-      offset: Offset(0, 2),
-      blurRadius: 4,
+      color: Color(0x08000000),  // 3% black
+      offset: Offset(0, 3),
+      blurRadius: 8,
       spreadRadius: 0,
     ),
   ];
   
+  // FLOATING SHADOWS - For elevated elements
   static const List<BoxShadow> floating = [
     BoxShadow(
-      color: AppColors.shadowMedium,
-      offset: Offset(0, 8),
-      blurRadius: 16,
-      spreadRadius: -4,
-    ),
-    BoxShadow(
-      color: Color(0x0A000000),
-      offset: Offset(0, 4),
-      blurRadius: 8,
-      spreadRadius: -2,
+      color: Color(0x0F000000),  // 6% black
+      offset: Offset(0, 6),
+      blurRadius: 18,
+      spreadRadius: 0,
     ),
   ];
   
+  // MODAL SHADOWS - For popups and overlays
   static const List<BoxShadow> modal = [
     BoxShadow(
-      color: AppColors.shadowHeavy,
-      offset: Offset(0, 20),
-      blurRadius: 40,
-      spreadRadius: -8,
-    ),
-    BoxShadow(
-      color: AppColors.shadowMedium,
-      offset: Offset(0, 8),
-      blurRadius: 16,
-      spreadRadius: -4,
+      color: Color(0x1A000000),  // 10% black
+      offset: Offset(0, 16),
+      blurRadius: 32,
+      spreadRadius: 0,
     ),
   ];
   
-  // LEGACY SHADOWS - Deprecated but maintained
+  // LEGACY ALIASES - For backward compatibility
   @Deprecated('Use sm instead')
-  static const BoxShadow light = sm;
+  static const List<BoxShadow> light = sm;
   
   @Deprecated('Use md instead')
-  static const BoxShadow medium = md;
+  static const List<BoxShadow> medium = md;
   
   @Deprecated('Use xl instead')
-  static const BoxShadow heavy = xl;
-  
-  @Deprecated('Use primaryGlow instead')
-  static const BoxShadow orangeGlow = primaryGlow;
-  
-  @Deprecated('Use primaryGlowStrong instead')
-  static const BoxShadow orangeGlowStrong = primaryGlowStrong;
-  
-  @Deprecated('Use primaryGlow instead')
-  static const BoxShadow softOrange = primaryGlow;
+  static const List<BoxShadow> heavy = xl;
 }
 
 class AppGradients {
   // ═══════════════════════════════════════════════════════════════
-  // 🌈 MODERN GRADIENT SYSTEM - Sophisticated & Eye-catching
+  // 🌿 NATURE-INSPIRED GRADIENTS - Subtle, Organic (Minimal Use)
   // ═══════════════════════════════════════════════════════════════
+  // Note: Use sparingly - prefer flat colors with photography
   
-  // PRIMARY GRADIENTS - Indigo/Purple magic ✨
-  static const LinearGradient primary = LinearGradient(
-    colors: [AppColors.gradientPrimaryStart, AppColors.gradientPrimaryMid, AppColors.gradientPrimaryEnd],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-  
-  static const LinearGradient primaryVertical = LinearGradient(
-    colors: [AppColors.primary, AppColors.primaryDark],
+  // SUBTLE BACKGROUNDS - Very gentle gradients
+  static const LinearGradient subtleSage = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-  );
-  
-  static const LinearGradient primaryHorizontal = LinearGradient(
-    colors: [AppColors.primaryDark, AppColors.primaryLight],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
-  );
-  
-  // SECONDARY GRADIENTS - Electric Blue/Cyan energy ⚡
-  static const LinearGradient secondary = LinearGradient(
-    colors: [AppColors.gradientSecondaryStart, AppColors.gradientSecondaryMid, AppColors.gradientSecondaryEnd],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-  
-  static const LinearGradient secondaryVertical = LinearGradient(
-    colors: [AppColors.secondary, AppColors.secondaryDark],
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-  );
-  
-  // ACCENT GRADIENTS - Vibrant Coral/Rose warmth 🌸
-  static const LinearGradient accent = LinearGradient(
-    colors: [AppColors.gradientAccentStart, AppColors.gradientAccentMid, AppColors.gradientAccentEnd],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-  
-  static const LinearGradient accentVertical = LinearGradient(
-    colors: [AppColors.accent, AppColors.accentDark],
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-  );
-  
-  // SUCCESS GRADIENTS - Emerald green vitality 🌿
-  static const LinearGradient success = LinearGradient(
-    colors: [AppColors.tertiaryLight, AppColors.tertiary, AppColors.tertiaryDark],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-  
-  // MULTI-COLOR GRADIENTS - Stunning combinations 🎨
-  static const LinearGradient sunset = LinearGradient(
-    colors: [AppColors.accent, AppColors.quaternary, AppColors.primary],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-  
-  static const LinearGradient ocean = LinearGradient(
-    colors: [AppColors.primary, AppColors.secondary, AppColors.tertiary],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-  
-  static const LinearGradient aurora = LinearGradient(
-    colors: [AppColors.primaryLight, AppColors.secondaryLight, AppColors.tertiaryLight],
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-  );
-  
-  static const LinearGradient tropical = LinearGradient(
-    colors: [AppColors.secondary, AppColors.tertiary, AppColors.quaternary],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-  
-  // SUBTLE BACKGROUND GRADIENTS - For cards and surfaces
-  static const LinearGradient subtleGrey = LinearGradient(
-    colors: [AppColors.grey50, AppColors.grey100],
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-  );
-  
-  static const LinearGradient subtlePrimary = LinearGradient(
-    colors: [AppColors.white, AppColors.primaryVeryLight],
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-  );
-  
-  static const LinearGradient subtleSecondary = LinearGradient(
-    colors: [AppColors.white, AppColors.secondaryVeryLight],
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-  );
-  
-  static const LinearGradient cardElevated = LinearGradient(
-    colors: [AppColors.white, Color(0xFFFAFBFC)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-  
-  // GLASSMORPHISM GRADIENTS - Modern frosted glass effect
-  static const LinearGradient glass = LinearGradient(
-    colors: [AppColors.glassBackground, Color(0xB3FFFFFF)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-  
-  static const LinearGradient glassPrimary = LinearGradient(
-    colors: [Color(0xCC4F46E5), Color(0xB34F46E5)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-  
-  // OVERLAY GRADIENTS - For image overlays and scrims
-  static const LinearGradient darkOverlay = LinearGradient(
-    colors: [Color(0x00000000), AppColors.overlayDark],
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-  );
-  
-  static const LinearGradient lightOverlay = LinearGradient(
-    colors: [Color(0x00FFFFFF), Color(0xCCFFFFFF)],
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-  );
-  
-  static const LinearGradient scrimBottom = LinearGradient(
-    colors: [Color(0x00000000), AppColors.scrim],
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-  );
-  
-  static const LinearGradient scrimTop = LinearGradient(
-    colors: [AppColors.scrim, Color(0x00000000)],
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-  );
-  
-  // RADIAL GRADIENTS - For special effects and hero sections
-  static const RadialGradient primaryRadial = RadialGradient(
-    colors: [AppColors.primaryPale, AppColors.primary, AppColors.primaryDark],
-    center: Alignment.center,
-    radius: 1.2,
-  );
-  
-  static const RadialGradient secondaryRadial = RadialGradient(
-    colors: [AppColors.secondaryPale, AppColors.secondary, AppColors.secondaryDark],
-    center: Alignment.center,
-    radius: 1.2,
-  );
-  
-  static const RadialGradient accentRadial = RadialGradient(
-    colors: [AppColors.accentPale, AppColors.accent, AppColors.accentDark],
-    center: Alignment.center,
-    radius: 1.2,
-  );
-  
-  // SHIMMER GRADIENT - For loading animations
-  static const LinearGradient shimmer = LinearGradient(
     colors: [
-      Color(0xFFE0E0E0),
-      Color(0xFFF5F5F5),
-      Color(0xFFE0E0E0),
+      AppColors.primary,           // Sage green
+      AppColors.primaryLight,      // Lighter sage
     ],
-    stops: [0.0, 0.5, 1.0],
-    begin: Alignment(-1.0, 0.0),
-    end: Alignment(1.0, 0.0),
   );
   
-  // LEGACY GRADIENTS - Deprecated but maintained for backwards compatibility
-  @Deprecated('Use primary instead')
-  static const LinearGradient primaryOrange = primary;
+  static const LinearGradient subtleCream = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      AppColors.secondary,         // Cream
+      AppColors.secondaryLight,    // Pale ivory
+    ],
+  );
   
-  @Deprecated('Use accent instead')
-  static const LinearGradient deepOrange = accent;
+  // IMAGE OVERLAYS - For text readability on photos
+  static const LinearGradient imageOverlay = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [
+      Color(0x00000000),          // Transparent top
+      Color(0x4D000000),          // 30% black bottom
+    ],
+  );
   
-  @Deprecated('Use sunset instead')
-  static const LinearGradient warmGlow = sunset;
+  static const LinearGradient imageOverlayLight = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [
+      Color(0x00000000),          // Transparent top
+      Color(0x26000000),          // 15% black bottom
+    ],
+  );
   
-  @Deprecated('Use ocean instead')
-  static const LinearGradient orangeTeal = ocean;
+  // CARD OVERLAYS - Subtle depth on cards
+  static const LinearGradient cardElevated = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      AppColors.secondary,         // Cream
+      AppColors.secondaryDark,     // Warm beige
+    ],
+  );
   
-  @Deprecated('Use aurora instead')
-  static const LinearGradient orangePurple = aurora;
+  // LEGACY - Deprecated (encourage flat colors)
+  @Deprecated('Use flat colors instead - prefer nature photography for visual interest')
+  static const LinearGradient primary = subtleSage;
   
-  @Deprecated('Use subtleGrey instead')
-  static const LinearGradient lightWarm = subtleGrey;
-  
-  @Deprecated('Use cardElevated instead')
-  static const LinearGradient cardGradient = cardElevated;
-  
-  @Deprecated('Use primaryRadial instead')
-  static const RadialGradient orangeRadial = primaryRadial;
+  @Deprecated('Use flat colors instead')
+  static const LinearGradient secondary = subtleCream;
 }
+
+// REMOVED OLD GRADIENT CLASSES - No longer needed in nature design
+// - AppGradients.primary, sunset, ocean, aurora, tropical, glass, shimmer, etc.
+// - Focus on flat colors + real photography instead
+// Nature-inspired design uses flat colors + real photography for visual interest

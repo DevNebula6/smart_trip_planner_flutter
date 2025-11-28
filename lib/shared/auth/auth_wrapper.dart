@@ -80,7 +80,7 @@ class AuthWrapper extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryAccent),
             ),
             const SizedBox(height: AppDimensions.marginL),
             Text(
@@ -120,7 +120,7 @@ class AuthWrapper extends StatelessWidget {
               const Icon(
                 Icons.check_circle,
                 size: 80,
-                color: AppColors.primaryGreen,
+                color: AppColors.primaryAccent,
               ),
               const SizedBox(height: AppDimensions.marginL),
               const Text(
@@ -149,7 +149,7 @@ class AuthWrapper extends StatelessWidget {
                     context.read<AuthBloc>().add(const AuthEventNavigateToSignIn());
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryGreen,
+                    backgroundColor: AppColors.primaryAccent,
                     foregroundColor: AppColors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppDimensions.radiusL),
@@ -236,7 +236,7 @@ class AuthWrapper extends StatelessWidget {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-                  borderSide: const BorderSide(color: AppColors.primaryGreen, width: 2),
+                  borderSide: const BorderSide(color: AppColors.primaryAccent, width: 2),
                 ),
                 filled: true,
                 fillColor: AppColors.white,
@@ -259,7 +259,7 @@ class AuthWrapper extends StatelessWidget {
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryGreen,
+                  backgroundColor: AppColors.primaryAccent,
                   foregroundColor: AppColors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppDimensions.radiusL),

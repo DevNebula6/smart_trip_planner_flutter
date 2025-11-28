@@ -9,10 +9,10 @@ import 'package:smart_trip_planner_flutter/core/storage/hive_storage_service.dar
 import 'package:smart_trip_planner_flutter/core/storage/hive_models.dart';
 import 'package:smart_trip_planner_flutter/ai_agent/models/trip_session_model.dart';
 import 'package:smart_trip_planner_flutter/trip_planning_chat/data/models/itinerary_models.dart';
-import 'package:smart_trip_planner_flutter/ai_agent/services/web_search_service.dart';
 import 'package:smart_trip_planner_flutter/ai_agent/services/ai_response_parser.dart';
 import 'package:smart_trip_planner_flutter/core/services/token_tracking_service.dart';
 import 'package:smart_trip_planner_flutter/core/constants/app_constants.dart';
+import 'package:smart_trip_planner_flutter/ai_agent/services/ai_tools_manager.dart';
 import '../../core/utils/helpers.dart';
 
 
@@ -23,8 +23,8 @@ class GeminiAIService implements AIAgentService {
   final TokenUsageStats _tokenUsage = TokenUsageStats();
   final HiveStorageService _storage = HiveStorageService.instance;
   
-  // Web search tool for real-time information
-  final WebSearchTool? _webSearchTool;
+  // Unified tools manager for all AI tools (web search, places, flights, hotels, etc.)
+  final AIToolsManager _toolsManager;
   
   // Session management (AI Companion patterns)
   final Map<String, ChatSession> _geminiSessions = {};
@@ -35,118 +35,73 @@ class GeminiAIService implements AIAgentService {
   final Set<String> _pendingSaves = {};
   static const Duration _saveDebounceDelay = Duration(milliseconds: AppConstants.sessionSaveDebounceMs);
 
-  GeminiAIService({
+  // Static helper to create tools for the model
+  static List<Tool>? _createToolsForModel(AIToolsManager manager) {
+    if (!manager.hasTools) {
+      Logger.w('No AI tools available - check API keys in .env', tag: 'GeminiAI');
+      return null;
+    }
+    final tools = manager.createToolDeclarations();
+    Logger.d('✓ Initialized ${manager.availableTools.length} AI tools: ${manager.availableTools.join(", ")}', tag: 'GeminiAI');
+    return tools.isNotEmpty ? tools : null;
+  }
+
+  // Private constructor for factory use
+  GeminiAIService._internal({
+    required GenerativeModel baseModel,
+    required AIToolsManager toolsManager,
+  })  : _baseModel = baseModel,
+        _toolsManager = toolsManager {
+    _initStorage();
+    
+    // Log detailed tool availability
+    if (_toolsManager.hasTools) {
+      Logger.d('✓ AI Tools ready: ${_toolsManager.availableTools.join(", ")}', tag: 'GeminiAI');
+    } else {
+      Logger.w('⚠ No AI tools available - limited functionality', tag: 'GeminiAI');
+    }
+  }
+
+  /// Factory constructor - creates AIToolsManager only ONCE
+  factory GeminiAIService({
     required String apiKey,
     String? googleSearchApiKey,
     String? googleSearchEngineId,
-  }) : _webSearchTool = _createWebSearchTool(
-          googleSearchApiKey: googleSearchApiKey,
-          googleSearchEngineId: googleSearchEngineId,
-        ),
-        _baseModel = GenerativeModel(
-          model: 'gemini-2.5-flash',
-          apiKey: apiKey,
-          systemInstruction: Content.text(_buildSystemPromptWithWebSearch()),
-          tools: _createTools(
-            googleSearchApiKey: googleSearchApiKey,
-            googleSearchEngineId: googleSearchEngineId,
-          ),
-          generationConfig: GenerationConfig(
-            temperature: AppConstants.aiTemperature,
-            topK: AppConstants.aiTopK,
-            topP: AppConstants.aiTopP,
-            maxOutputTokens: AppConstants.aiMaxOutputTokens,
-          ),
-        ) {
-    _initStorage();
-    
-    // Log web search tool configuration
-    final hasGoogleSearch = googleSearchApiKey?.isNotEmpty == true && 
-                           googleSearchEngineId?.isNotEmpty == true;
-    
-    if (hasGoogleSearch) {
-      Logger.d('Web search configured with Google Custom Search API', tag: 'GeminiAI');
-    } else {
-      Logger.d('Web search not configured - no API keys provided', tag: 'GeminiAI');
-    }
-  }
-
-  /// Create web search tool if API keys are available
-  static WebSearchTool? _createWebSearchTool({
-    String? googleSearchApiKey,
-    String? googleSearchEngineId,
-    String? bingSearchApiKey,
+    String? googlePlacesApiKey,
+    String? rapidApiKey,
   }) {
-    // Prefer Google Custom Search if both keys are available
-    if (googleSearchApiKey != null && 
-        googleSearchApiKey.isNotEmpty && 
-        googleSearchEngineId != null && 
-        googleSearchEngineId.isNotEmpty) {
-      Logger.d('Initializing Google Custom Search tool', tag: 'GeminiAI');
-      return WebSearchTool.google(
-        apiKey: googleSearchApiKey,
-        searchEngineId: googleSearchEngineId,
-      );
-    }
+    // Log API key availability for debugging
+    Logger.d('Initializing GeminiAIService with tools:', tag: 'GeminiAI');
+    Logger.d('  - Google Search: ${googleSearchApiKey != null && googleSearchEngineId != null ? "✓" : "✗"}', tag: 'GeminiAI');
+    Logger.d('  - Google Places: ${googlePlacesApiKey != null ? "✓" : "✗"}', tag: 'GeminiAI');
+    Logger.d('  - RapidAPI (Flights/Hotels): ${rapidApiKey != null ? "✓" : "✗"}', tag: 'GeminiAI');
     
-    // Fallback to Bing if available
-    if (bingSearchApiKey != null && bingSearchApiKey.isNotEmpty) {
-      Logger.d('Initializing Bing Web Search tool', tag: 'GeminiAI');
-      return WebSearchTool.bing(apiKey: bingSearchApiKey);
-    }
-    
-    Logger.d('No web search APIs configured - web search disabled', tag: 'GeminiAI');
-    return null;
-  }
-
-  /// Create tools list for Gemini model
-  static List<Tool>? _createTools({
-    String? googleSearchApiKey,
-    String? googleSearchEngineId,
-    String? bingSearchApiKey,
-  }) {
-    final webSearchTool = _createWebSearchTool(
+    // Create tools manager ONCE - it handles all tools internally
+    final toolsManager = AIToolsManager.withKeys(
       googleSearchApiKey: googleSearchApiKey,
       googleSearchEngineId: googleSearchEngineId,
-      bingSearchApiKey: bingSearchApiKey,
+      googlePlacesApiKey: googlePlacesApiKey,
+      rapidApiKey: rapidApiKey,
     );
-    
-    if (webSearchTool == null) {
-      Logger.d('No web search tools available - tool-calling disabled', tag: 'GeminiAI');
-      return null;
-    }
-    
-    try {
-      // Create the web search function declaration
-      final functionDeclaration = FunctionDeclaration(
-        'webSearch',
-        'Search the web for real-time information about travel destinations, restaurants, hotels, events, attractions, and transportation. Use this for current pricing, hours, reviews, and availability.',
-        Schema(
-          SchemaType.object,
-          properties: {
-            'query': Schema(
-              SchemaType.string,
-              description: 'The search query for travel-related information. Be specific and include location, dates, or preferences.',
-            ),
-            'maxResults': Schema(
-              SchemaType.integer,
-              description: 'Maximum number of search results to return (default: 5, max: 10)',
-            ),
-          },
-          requiredProperties: ['query'],
-        ),
-      );
-      
-      Logger.d('Created web search function declaration for tool-calling', tag: 'GeminiAI');
-      
-      return [
-        Tool(functionDeclarations: [functionDeclaration]),
-      ];
-      
-    } catch (e) {
-      Logger.e('Failed to create function declaration: $e', tag: 'GeminiAI');
-      return null;
-    }
+
+    // Create model with tools from the single manager instance
+    final baseModel = GenerativeModel(
+      model: 'gemini-2.5-flash',
+      apiKey: apiKey,
+      systemInstruction: Content.text(buildEnhancedSystemPrompt()),
+      tools: _createToolsForModel(toolsManager),
+      generationConfig: GenerationConfig(
+        temperature: AppConstants.aiTemperature,
+        topK: AppConstants.aiTopK,
+        topP: AppConstants.aiTopP,
+        maxOutputTokens: AppConstants.aiMaxOutputTokens,
+      ),
+    );
+
+    return GeminiAIService._internal(
+      baseModel: baseModel,
+      toolsManager: toolsManager,
+    );
   }
 
   Future<void> _initStorage() async {
@@ -203,15 +158,40 @@ IMPORTANT: Create a response based on the user's request and preferences above.
         },
       );
 
-      // Handle function calls if present
-      if (response.functionCalls.isNotEmpty) {
+      // Handle function calls in a loop (Gemini may request multiple rounds)
+      const maxFunctionCallRounds = 10; // Prevent infinite loops
+      var functionCallRound = 0;
+      
+      while (response.functionCalls.isNotEmpty && functionCallRound < maxFunctionCallRounds) {
+        functionCallRound++;
+        Logger.d('Gemini requested ${response.functionCalls.length} function call(s) (round $functionCallRound)', tag: 'AITools');
         final functionResponses = <FunctionResponse>[];
+        
         for (final call in response.functionCalls) {
-          // Simplified function call handling
-          final result = 'Function call result for ${call.name}';
-          functionResponses.add(FunctionResponse(call.name, {'result': result}));
+          Logger.d('Processing ${call.name} function call', tag: 'AITools');
+          try {
+            final result = await _toolsManager.handleFunctionCall(call.name, call.args);
+            functionResponses.add(FunctionResponse(call.name, result));
+            Logger.d('${call.name} completed successfully', tag: 'AITools');
+          } catch (e) {
+            Logger.e('${call.name} failed: $e', tag: 'AITools');
+            functionResponses.add(FunctionResponse(
+              call.name,
+              {'error': 'Function call failed: $e', 'results': []},
+            ));
+          }
         }
-        response = await chatSession.sendMessage(Content.functionResponses(functionResponses));
+        
+        response = await chatSession.sendMessage(Content.functionResponses(functionResponses)).timeout(
+          const Duration(seconds: 45),
+          onTimeout: () {
+            throw TimeoutException('AI response timed out after function call');
+          },
+        );
+      }
+      
+      if (functionCallRound >= maxFunctionCallRounds) {
+        Logger.w('Max function call rounds reached ($maxFunctionCallRounds)', tag: 'AITools');
       }
 
       // Debug response structure
@@ -355,42 +335,47 @@ IMPORTANT: Create a complete trip plan based on the user's request and preferenc
       
       // Send message and handle potential function calls
       var response = await chatSession.sendMessage(Content.text(fullPrompt))
-          .timeout(const Duration(seconds: 45), onTimeout: () { // Increased timeout
+          .timeout(const Duration(seconds: 45), onTimeout: () {
         throw TimeoutException('AI response timed out');
       });
 
-      // Handle function calls if present
-      if (response.functionCalls.isNotEmpty) {
-        Logger.d('Gemini requested ${response.functionCalls.length} function call(s)', tag: 'WebSearchTool');
+      // Handle function calls in a loop (Gemini may request multiple rounds)
+      const maxFunctionCallRounds = 10;
+      var functionCallRound = 0;
+      
+      while (response.functionCalls.isNotEmpty && functionCallRound < maxFunctionCallRounds) {
+        functionCallRound++;
+        Logger.d('Gemini requested ${response.functionCalls.length} function call(s) (round $functionCallRound)', tag: 'AITools');
         
         final functionResponses = <FunctionResponse>[];
         
         for (final functionCall in response.functionCalls) {
-          if (functionCall.name == 'webSearch' && _webSearchTool != null) {
-            Logger.d('Processing webSearch function call: ${functionCall.args}', tag: 'WebSearchTool');
-            
-            try {
-              final searchResult = await _webSearchTool.handleFunctionCall(functionCall.args);
-              functionResponses.add(FunctionResponse(functionCall.name, searchResult));
-              Logger.d('Web search completed successfully', tag: 'WebSearchTool');
-            } catch (e) {
-              Logger.e('Web search failed: $e', tag: 'WebSearchTool');
-              functionResponses.add(FunctionResponse(
-                functionCall.name, 
-                {'error': 'Search failed: $e', 'results': <Map<String, dynamic>>[]}
-              ));
-            }
+          Logger.d('Processing ${functionCall.name} function call', tag: 'AITools');
+          
+          try {
+            final result = await _toolsManager.handleFunctionCall(
+              functionCall.name,
+              functionCall.args,
+            );
+            functionResponses.add(FunctionResponse(functionCall.name, result));
+            Logger.d('${functionCall.name} completed successfully', tag: 'AITools');
+          } catch (e) {
+            Logger.e('${functionCall.name} failed: $e', tag: 'AITools');
+            functionResponses.add(FunctionResponse(
+              functionCall.name, 
+              {'error': 'Function call failed: $e', 'results': <Map<String, dynamic>>[]}
+            ));
           }
         }
         
-        // Send function responses back to Gemini
-        if (functionResponses.isNotEmpty) {
-          Logger.d('Sending ${functionResponses.length} function response(s) back to Gemini', tag: 'WebSearchTool');
-          response = await chatSession.sendMessage(Content.functionResponses(functionResponses))
-              .timeout(const Duration(seconds: 30), onTimeout: () {
-            throw TimeoutException('Function response timed out');
-          });
-        }
+        response = await chatSession.sendMessage(Content.functionResponses(functionResponses))
+            .timeout(const Duration(seconds: 45), onTimeout: () {
+          throw TimeoutException('Function response timed out');
+        });
+      }
+      
+      if (functionCallRound >= maxFunctionCallRounds) {
+        Logger.w('Max function call rounds reached in generateItinerary', tag: 'AITools');
       }
 
       // Debug the actual response with detailed inspection
@@ -578,38 +563,44 @@ IMPORTANT: Create a complete trip plan based on the user's request and preferenc
         throw TimeoutException('AI response timed out');
       });
 
-      // Handle function calls if present
-      if (response.functionCalls.isNotEmpty) {
-        Logger.d('Gemini requested ${response.functionCalls.length} function call(s) during refinement', tag: 'WebSearchTool');
+      // Handle function calls in a loop (Gemini may request multiple rounds)
+      const maxFunctionCallRounds = 10;
+      var functionCallRound = 0;
+      
+      while (response.functionCalls.isNotEmpty && functionCallRound < maxFunctionCallRounds) {
+        functionCallRound++;
+        Logger.d('Gemini requested ${response.functionCalls.length} function call(s) during refinement (round $functionCallRound)', tag: 'AITools');
         
         final functionResponses = <FunctionResponse>[];
         
         for (final functionCall in response.functionCalls) {
-          if (functionCall.name == 'webSearch' && _webSearchTool != null) {
-            Logger.d('Processing webSearch function call: ${functionCall.args}', tag: 'WebSearchTool');
-            
-            try {
-              final searchResult = await _webSearchTool.handleFunctionCall(functionCall.args);
-              functionResponses.add(FunctionResponse(functionCall.name, searchResult));
-              Logger.d('Web search completed successfully during refinement', tag: 'WebSearchTool');
-            } catch (e) {
-              Logger.e('Web search failed during refinement: $e', tag: 'WebSearchTool');
-              functionResponses.add(FunctionResponse(
-                functionCall.name, 
-                {'error': 'Search failed: $e', 'results': <Map<String, dynamic>>[]}
-              ));
-            }
+          Logger.d('Processing ${functionCall.name} function call', tag: 'AITools');
+          
+          try {
+            // Use the unified tools manager for all function calls
+            final result = await _toolsManager.handleFunctionCall(
+              functionCall.name,
+              functionCall.args,
+            );
+            functionResponses.add(FunctionResponse(functionCall.name, result));
+            Logger.d('${functionCall.name} completed successfully', tag: 'AITools');
+          } catch (e) {
+            Logger.e('${functionCall.name} failed: $e', tag: 'AITools');
+            functionResponses.add(FunctionResponse(
+              functionCall.name, 
+              {'error': 'Function call failed: $e', 'results': <Map<String, dynamic>>[]}
+            ));
           }
         }
         
-        // Send function responses back to Gemini
-        if (functionResponses.isNotEmpty) {
-          Logger.d('Sending ${functionResponses.length} function response(s) back to Gemini during refinement', tag: 'WebSearchTool');
-          response = await chatSession.sendMessage(Content.functionResponses(functionResponses))
-              .timeout(const Duration(seconds: 30), onTimeout: () {
-            throw TimeoutException('Function response timed out');
-          });
-        }
+        response = await chatSession.sendMessage(Content.functionResponses(functionResponses))
+            .timeout(const Duration(seconds: 45), onTimeout: () {
+          throw TimeoutException('Function response timed out');
+        });
+      }
+      
+      if (functionCallRound >= maxFunctionCallRounds) {
+        Logger.w('Max function call rounds reached in refineItinerary', tag: 'AITools');
       }
 
       final responseText = response.text ?? '';
@@ -1063,95 +1054,6 @@ User Request: $userPrompt
     );
   }
 
-  static String _buildSystemPromptWithWebSearch() {
-    return '''
-You are an expert travel planner AI with access to real-time web search capabilities. Generate detailed day-by-day itineraries in JSON format.
-
-IMPORTANT: Use the webSearch function to get real-time information about:
-- Current restaurant prices, hours, and reviews
-- Hotel availability and rates near attractions  
-- Recent events and festivals during travel dates
-- Transportation schedules and options
-- Weather conditions and seasonal recommendations
-- Attraction opening hours and ticket prices
-
-SEARCH STRATEGY:
-- For each major destination, search for "restaurants in [location]" or "best restaurants [location]"
-- For accommodations, search "hotels near [attraction name]" or "best hotels [location]"
-- For activities, search "[activity] in [location] [year]" to get current information
-- Always include the year (2025 or later) in searches for current information
-
-RESPONSE TYPES:
-1. ITINERARY RESPONSE: When you have information to create/modify an itinerary, respond with ONLY the JSON object.
-2. FOLLOW-UP QUESTION: When you need more information from the user, start your response with "FOLLOWUP: " followed by your question.
-
-RESPONSE BEHAVIOR:
-1. FIRST REQUEST = IMMEDIATE ITINERARY: Always create a itinerary using web search data for the first chat with the user(if no history is present), even with basic prompts like "Plan a trip to Tokyo" by using intelligent assumptions and landmark famous attractions
-
-EXAMPLES:
-- User: "Make it cheaper" → Response: "FOLLOWUP: What's your preferred budget range per day?"
-- User: "Add more restaurants" → Response: "FOLLOWUP: What type of cuisine are you interested in?"
-- User: "Plan a trip to Paris for 3 days" → Response: {JSON itinerary}
-
-CRITICAL JSON FORMATTING RULES:
-- Response MUST be valid, complete, parseable JSON
-- ALWAYS close all braces and brackets properly
-- Keep response under 3600 tokens (roughly 2800 words)
-- Limit to maximum 5-10 days for longer trips
-- Maximum 3-5 activities per day
-- Keep activity descriptions brief and short and to the point
-- Use short, precise points
-- Make sure the FOLLOWUP questions are clear and specific and ask one or two questions at a time not a list of many questions along with your suggestions for the follow up questions answers based on the location,culture and context of the trip
-
-EXACT JSON schema required (MUST be valid JSON):
-{
-  "title": "Trip Title",
-  "startDate": "YYYY-MM-DD", 
-  "endDate": "YYYY-MM-DD",
-  "days": [
-    {
-      "date": "YYYY-MM-DD",
-      "summary": "Brief day summary (max 8 words)",
-      "items": [
-        {
-          "time": "HH:MM",
-          "activity": "Brief activity description with current info from web search", 
-          "location": "lat,lng"
-        }
-      ]
-    }
-  ]
-}
-
-ESSENTIAL RULES:
-- 24-hour time format only (e.g., "09:00", "14:30", "18:00")
-- Real coordinates for location (lat,lng format)
-- For follow-up questions: Start with "FOLLOWUP: " and ask concise, specific questions
-- For itineraries: NO additional text, prose, or code blocks - ONLY the JSON object
-- CRITICAL: Ensure JSON is complete and properly closed - count your braces!
-- Every opening { must have a closing }
-- Every opening [ must have a closing ]
-- Test your JSON structure before responding
-- Use web search results to enhance activity descriptions with current pricing, hours, and reviews
-
-JSON VALIDATION CHECKLIST:
-✓ Opening brace { at start
-✓ All string values in double quotes
-✓ All arrays properly closed with ]
-✓ All objects properly closed with }
-✓ Closing brace } at end
-✓ No trailing commas
-
-EXAMPLE WEB SEARCHES:
-- "restaurants in Kyoto 2025"
-- "best hotels near Fushimi Inari Shrine"
-- "Kinkaku-ji Temple opening hours tickets 2025"
-- "Tokyo events March 2025"
-
-Remember: If you need clarification, use "FOLLOWUP: " prefix. If you can create/modify the itinerary, respond with ONLY a valid, complete, properly-closed JSON object.
-''';
-  }
-
   Map<String, dynamic> _extractItineraryFromResponse(String response) {
     try {
       _logResponseEndingDetails(response);
@@ -1387,8 +1289,8 @@ Remember: If you need clarification, use "FOLLOWUP: " prefix. If you can create/
     _geminiSessions.clear();
     _sessionLastUsed.clear();
     
-    // Dispose web search tool if present
-    _webSearchTool?.dispose();
+    // Dispose web search tool if present (via tools manager)
+    _toolsManager.webSearchTool?.dispose();
     
     Logger.d('GeminiAIService disposed successfully', tag: 'GeminiAI');
   }
@@ -1455,11 +1357,15 @@ class AIAgentServiceFactory {
     String? googleSearchApiKey,
     String? googleSearchEngineId,
     String? bingSearchApiKey,
+    String? googlePlacesApiKey,
+    String? rapidApiKey,
   }) {
     return GeminiAIService(
       apiKey: geminiApiKey,
       googleSearchApiKey: googleSearchApiKey,
       googleSearchEngineId: googleSearchEngineId,
+      googlePlacesApiKey: googlePlacesApiKey,
+      rapidApiKey: rapidApiKey,
     );
   }
   

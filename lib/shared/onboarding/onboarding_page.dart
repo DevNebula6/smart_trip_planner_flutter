@@ -19,7 +19,7 @@ class _OnboardingScreenViewState extends State<OnboardingScreenView> {
       title: "✈️ Itinera AI",
       description: "Your intelligent travel companion that creates personalized itineraries with the power of AI",
       icon: Icons.flight_takeoff,
-      color: AppColors.primaryGreen,
+      color: AppColors.primaryAccent,
     ),
     OnboardingPage(
       title: "🗨️ Chat & Plan",
@@ -31,7 +31,7 @@ class _OnboardingScreenViewState extends State<OnboardingScreenView> {
       title: "🌍 Discover Places",
       description: "Get real-time information about destinations, restaurants, and hidden gems worldwide",
       icon: Icons.explore_outlined,
-      color: AppColors.primaryGreen,
+      color: AppColors.primaryAccent,
     ),
     OnboardingPage(
       title: "📱 Save & Access",
@@ -69,7 +69,7 @@ class _OnboardingScreenViewState extends State<OnboardingScreenView> {
                 PageIndicator(
                   currentPage: _currentPage,
                   pageCount: _pages.length,
-                  activeColor: AppColors.primaryGreen,
+                  activeColor: AppColors.primaryAccent,
                   inactiveColor: AppColors.grey.withOpacity(0.3),
                   dotWidth: 8,
                   activeDotWidth: 24,
@@ -119,7 +119,7 @@ class _OnboardingScreenViewState extends State<OnboardingScreenView> {
                               );
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primaryGreen,
+                              backgroundColor: AppColors.primaryAccent,
                               foregroundColor: AppColors.white,
                               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                               shape: RoundedRectangleBorder(
@@ -202,7 +202,7 @@ class _OnboardingScreenViewState extends State<OnboardingScreenView> {
                           Navigator.pushReplacementNamed(context, AppRoutes.login);
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryGreen,
+                          backgroundColor: AppColors.primaryAccent,
                           foregroundColor: AppColors.white,
                           padding: const EdgeInsets.symmetric(
                             horizontal: AppDimensions.paddingXL,

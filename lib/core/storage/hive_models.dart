@@ -1,11 +1,14 @@
 import 'package:hive/hive.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'dart:convert';
 
 part 'hive_models.g.dart';
 
 /// **Hive Itinerary Model**
 /// 
-/// Replaces ItineraryModel with Hive compatibility
+/// Replaces ItineraryModel with Hive compatibility.
+/// Stores extended booking data (transport, stays, budget) as JSON strings
+/// for flexible schema without regenerating Hive adapters.
 @HiveType(typeId: 0)
 class HiveItineraryModel extends HiveObject {
   @HiveField(0)
@@ -34,6 +37,18 @@ class HiveItineraryModel extends HiveObject {
   
   @HiveField(8)
   String? sessionId; // Link to the session that created this itinerary
+  
+  /// Transport plan stored as JSON string for flexibility
+  @HiveField(9)
+  String? transportJson;
+  
+  /// Stays/accommodation plan stored as JSON string
+  @HiveField(10)
+  String? staysJson;
+  
+  /// Budget breakdown stored as JSON string
+  @HiveField(11)
+  String? budgetJson;
 
   HiveItineraryModel({
     required this.id,
@@ -45,16 +60,38 @@ class HiveItineraryModel extends HiveObject {
     this.createdAt,
     this.updatedAt,
     this.sessionId,
+    this.transportJson,
+    this.staysJson,
+    this.budgetJson,
   });
 
   /// Convert to JSON for API responses (maintains assignment spec)
   Map<String, dynamic> toJson() {
-    return {
+    final json = <String, dynamic>{
       'title': title,
       'startDate': startDate,
       'endDate': endDate,
       'days': days.map((day) => day.toJson()).toList(),
     };
+    
+    // Add extended data if present
+    if (transportJson != null) {
+      try {
+        json['transport'] = jsonDecode(transportJson!);
+      } catch (_) {}
+    }
+    if (staysJson != null) {
+      try {
+        json['stays'] = jsonDecode(staysJson!);
+      } catch (_) {}
+    }
+    if (budgetJson != null) {
+      try {
+        json['budget'] = jsonDecode(budgetJson!);
+      } catch (_) {}
+    }
+    
+    return json;
   }
 
   /// Create from JSON (for AI responses)
@@ -68,11 +105,23 @@ class HiveItineraryModel extends HiveObject {
           .map((dayJson) => HiveDayPlanModel.fromJson(dayJson as Map<String, dynamic>))
           .toList(),
       createdAt: DateTime.now(),
+      transportJson: json['transport'] != null ? jsonEncode(json['transport']) : null,
+      staysJson: json['stays'] != null ? jsonEncode(json['stays']) : null,
+      budgetJson: json['budget'] != null ? jsonEncode(json['budget']) : null,
     );
   }
   
   /// Calculate trip duration in days
   int get durationDays => days.length;
+  
+  /// Check if transport data exists
+  bool get hasTransport => transportJson != null && transportJson!.isNotEmpty;
+  
+  /// Check if stays data exists
+  bool get hasStays => staysJson != null && staysJson!.isNotEmpty;
+  
+  /// Check if budget data exists
+  bool get hasBudget => budgetJson != null && budgetJson!.isNotEmpty;
 }
 
 /// **Hive Day Plan Model**
@@ -397,6 +446,9 @@ class HiveSessionState extends HiveObject {
   void extractTripContext(String userMessage) {
     final lowerMessage = userMessage.toLowerCase();
 
+    // Extract dates from user message
+    _extractTripDates(userMessage);
+
     // Extract destination - enhanced patterns
     if (lowerMessage.contains(RegExp(r'\b(?:to|visit|in|at)\s+'))) {
       final destinationPatterns = [
@@ -483,9 +535,116 @@ class HiveSessionState extends HiveObject {
     }
   }
 
+  /// Extract trip dates from user message
+  void _extractTripDates(String userMessage) {
+    // Date patterns to match various formats
+    // Pattern 1: "from January 15 to January 20" or "from 15 Jan to 20 Jan"
+    // Pattern 2: "15th January - 20th January"
+    // Pattern 3: "2025-01-15 to 2025-01-20" (ISO format)
+    // Pattern 4: "starting January 15" or "starting on 15th January"
+    // Pattern 5: "next week", "next month", "in December"
+    
+    final monthNames = r'(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)';
+    
+    // Pattern: "from [date] to [date]" or "[date] - [date]"
+    final dateRangePattern = RegExp(
+      r'(?:from\s+)?(\d{1,2})(?:st|nd|rd|th)?\s*' + monthNames + r'\s*(?:\d{4})?\s*(?:to|-)\s*(\d{1,2})(?:st|nd|rd|th)?\s*' + monthNames + r'\s*(?:\d{4})?',
+      caseSensitive: false,
+    );
+    
+    // Pattern: "month day to month day" (e.g., "January 15 to January 20")
+    final monthFirstPattern = RegExp(
+      monthNames + r'\s+(\d{1,2})(?:st|nd|rd|th)?\s*(?:\d{4})?\s*(?:to|-)\s*' + monthNames + r'\s+(\d{1,2})(?:st|nd|rd|th)?',
+      caseSensitive: false,
+    );
+    
+    // Pattern: ISO date "2025-01-15"
+    final isoDatePattern = RegExp(r'(\d{4}-\d{2}-\d{2})');
+    
+    // Pattern: "starting [date]" or "beginning [date]"
+    final startDatePattern = RegExp(
+      r'(?:start(?:ing)?|begin(?:ning)?|from)\s+(?:on\s+)?(\d{1,2})(?:st|nd|rd|th)?\s*' + monthNames,
+      caseSensitive: false,
+    );
+    
+    // Pattern: "for X days/weeks" to calculate number of days
+    final durationPattern = RegExp(r'for\s+(\d+)\s*(day|days|week|weeks)', caseSensitive: false);
+    
+    // Try to extract dates
+    final isoMatches = isoDatePattern.allMatches(userMessage).toList();
+    if (isoMatches.length >= 2) {
+      tripContext['start_date'] = isoMatches[0].group(1);
+      tripContext['end_date'] = isoMatches[1].group(1);
+      _calculateNumberOfDays();
+      return;
+    } else if (isoMatches.length == 1) {
+      tripContext['start_date'] = isoMatches[0].group(1);
+    }
+    
+    // Try date range patterns
+    final rangeMatch = dateRangePattern.firstMatch(userMessage) ?? 
+                       monthFirstPattern.firstMatch(userMessage);
+    if (rangeMatch != null) {
+      // Store the matched text for context (AI can interpret)
+      tripContext['date_range_text'] = rangeMatch.group(0);
+    }
+    
+    // Try start date pattern
+    final startMatch = startDatePattern.firstMatch(userMessage);
+    if (startMatch != null) {
+      tripContext['start_date_text'] = startMatch.group(0);
+    }
+    
+    // Extract duration to calculate number of days
+    final durationMatch = durationPattern.firstMatch(userMessage);
+    if (durationMatch != null) {
+      final number = int.tryParse(durationMatch.group(1) ?? '0') ?? 0;
+      final unit = durationMatch.group(2)?.toLowerCase() ?? 'days';
+      
+      if (unit.contains('week')) {
+        tripContext['number_of_days'] = number * 7;
+      } else {
+        tripContext['number_of_days'] = number;
+      }
+    }
+  }
+
+  /// Calculate number of days from start and end date
+  void _calculateNumberOfDays() {
+    if (tripContext.containsKey('start_date') && tripContext.containsKey('end_date')) {
+      try {
+        final start = DateTime.parse(tripContext['start_date'] as String);
+        final end = DateTime.parse(tripContext['end_date'] as String);
+        final days = end.difference(start).inDays + 1; // Include both start and end day
+        if (days > 0) {
+          tripContext['number_of_days'] = days;
+        }
+      } catch (e) {
+        // Date parsing failed, skip calculation
+      }
+    }
+  }
+
   /// Build context for refinement requests
   String buildRefinementContext() {
     final buffer = StringBuffer();
+
+    // Add trip dates if available
+    if (tripContext.containsKey('start_date') || tripContext.containsKey('end_date')) {
+      buffer.writeln('Trip Dates:');
+      if (tripContext.containsKey('start_date')) {
+        buffer.writeln('- Start Date: ${tripContext['start_date']}');
+      }
+      if (tripContext.containsKey('end_date')) {
+        buffer.writeln('- End Date: ${tripContext['end_date']}');
+      }
+      if (tripContext.containsKey('number_of_days')) {
+        buffer.writeln('- Number of Days: ${tripContext['number_of_days']}');
+      } else if (tripContext.containsKey('duration')) {
+        buffer.writeln('- Duration: ${tripContext['duration']}');
+      }
+      buffer.writeln();
+    }
 
     if (userPreferences.isNotEmpty) {
       buffer.writeln('User Preferences:');
@@ -498,7 +657,10 @@ class HiveSessionState extends HiveObject {
     if (tripContext.isNotEmpty) {
       buffer.writeln('Trip Context:');
       tripContext.forEach((key, value) {
-        buffer.writeln('- $key: $value');
+        // Skip date-related fields already shown above
+        if (!['start_date', 'end_date', 'number_of_days'].contains(key)) {
+          buffer.writeln('- $key: $value');
+        }
       });
       buffer.writeln();
     }

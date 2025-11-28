@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../../ai_agent/services/gemini_service.dart';
 import '../../../core/storage/hive_storage_service.dart';
 import '../../../core/storage/hive_models.dart';
 import '../../../trip_planning_chat/data/models/itinerary_models.dart';
+import '../../../trip_planning_chat/data/models/booking_models.dart';
 import '../../../core/utils/helpers.dart';
 
 // ===== CHAT EVENTS =====
@@ -519,6 +521,38 @@ class MessageBasedChatBloc extends Bloc<ChatEvent, ChatState> {
 
   /// Convert ItineraryModel to HiveItineraryModel
   HiveItineraryModel _convertItineraryToHiveItinerary(ItineraryModel itinerary) {
+    // Serialize extended booking data to JSON strings
+    String? transportJson;
+    String? staysJson;
+    String? budgetJson;
+    
+    if (itinerary.transport != null) {
+      try {
+        transportJson = jsonEncode(itinerary.transport!.toJson());
+        Logger.d('Serialized transport data for storage', tag: 'MessageChatBloc');
+      } catch (e) {
+        Logger.w('Failed to serialize transport data: $e', tag: 'MessageChatBloc');
+      }
+    }
+    
+    if (itinerary.stays != null) {
+      try {
+        staysJson = jsonEncode(itinerary.stays!.toJson());
+        Logger.d('Serialized stays data for storage', tag: 'MessageChatBloc');
+      } catch (e) {
+        Logger.w('Failed to serialize stays data: $e', tag: 'MessageChatBloc');
+      }
+    }
+    
+    if (itinerary.budget != null) {
+      try {
+        budgetJson = jsonEncode(itinerary.budget!.toJson());
+        Logger.d('Serialized budget data for storage', tag: 'MessageChatBloc');
+      } catch (e) {
+        Logger.w('Failed to serialize budget data: $e', tag: 'MessageChatBloc');
+      }
+    }
+    
     return HiveItineraryModel(
       id: itinerary.id,
       title: itinerary.title,
@@ -536,11 +570,49 @@ class MessageBasedChatBloc extends Bloc<ChatEvent, ChatState> {
       originalPrompt: itinerary.originalPrompt,
       createdAt: itinerary.createdAt,
       updatedAt: itinerary.updatedAt,
+      transportJson: transportJson,
+      staysJson: staysJson,
+      budgetJson: budgetJson,
     );
   }
 
   /// Convert HiveItineraryModel to ItineraryModel
   ItineraryModel _convertHiveItineraryToItinerary(HiveItineraryModel hiveItinerary) {
+    // Deserialize extended booking data from JSON strings
+    TransportPlan? transport;
+    StaysPlan? stays;
+    BudgetPlan? budget;
+    
+    if (hiveItinerary.transportJson != null && hiveItinerary.transportJson!.isNotEmpty) {
+      try {
+        final transportData = jsonDecode(hiveItinerary.transportJson!) as Map<String, dynamic>;
+        transport = TransportPlan.fromJson(transportData);
+        Logger.d('Deserialized transport data from storage', tag: 'MessageChatBloc');
+      } catch (e) {
+        Logger.w('Failed to deserialize transport data: $e', tag: 'MessageChatBloc');
+      }
+    }
+    
+    if (hiveItinerary.staysJson != null && hiveItinerary.staysJson!.isNotEmpty) {
+      try {
+        final staysData = jsonDecode(hiveItinerary.staysJson!) as Map<String, dynamic>;
+        stays = StaysPlan.fromJson(staysData);
+        Logger.d('Deserialized stays data from storage', tag: 'MessageChatBloc');
+      } catch (e) {
+        Logger.w('Failed to deserialize stays data: $e', tag: 'MessageChatBloc');
+      }
+    }
+    
+    if (hiveItinerary.budgetJson != null && hiveItinerary.budgetJson!.isNotEmpty) {
+      try {
+        final budgetData = jsonDecode(hiveItinerary.budgetJson!) as Map<String, dynamic>;
+        budget = BudgetPlan.fromJson(budgetData);
+        Logger.d('Deserialized budget data from storage', tag: 'MessageChatBloc');
+      } catch (e) {
+        Logger.w('Failed to deserialize budget data: $e', tag: 'MessageChatBloc');
+      }
+    }
+    
     return ItineraryModel(
       id: hiveItinerary.id,
       title: hiveItinerary.title,
@@ -558,6 +630,9 @@ class MessageBasedChatBloc extends Bloc<ChatEvent, ChatState> {
       originalPrompt: hiveItinerary.originalPrompt,
       createdAt: hiveItinerary.createdAt,
       updatedAt: hiveItinerary.updatedAt,
+      transport: transport,
+      stays: stays,
+      budget: budget,
     );
   }
 

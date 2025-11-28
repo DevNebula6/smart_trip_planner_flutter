@@ -25,7 +25,7 @@ class ItineraryCompactCard extends StatelessWidget {
           color: AppColors.white,
           borderRadius: BorderRadius.circular(AppDimensions.radiusM),
           border: Border.all(
-            color: AppColors.primaryGreen.withOpacity(0.2),
+            color: AppColors.primaryAccent.withOpacity(0.2),
             width: 1,
           ),
           boxShadow: AppShadows.card,
@@ -39,13 +39,13 @@ class ItineraryCompactCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: AppColors.primaryGreen.withOpacity(0.1),
+                    color: AppColors.primaryAccent.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Icon(
                     Icons.map_outlined,
                     size: 16,
-                    color: AppColors.primaryGreen,
+                    color: AppColors.primaryAccent,
                   ),
                 ),
                 const SizedBox(width: AppDimensions.paddingS),
@@ -78,13 +78,13 @@ class ItineraryCompactCard extends StatelessWidget {
                     vertical: AppDimensions.paddingXS,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.primaryGreen.withOpacity(0.1),
+                    color: AppColors.primaryAccent.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(AppDimensions.radiusS),
                   ),
                   child: Text(
                     '${itinerary.days.length} days',
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.primaryGreen,
+                      color: AppColors.primaryAccent,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -122,10 +122,10 @@ class ItineraryCompactCard extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: AppDimensions.paddingS),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryGreen.withOpacity(0.1),
+                  color: AppColors.primaryAccent.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(AppDimensions.radiusS),
                   border: Border.all(
-                    color: AppColors.primaryGreen.withOpacity(0.2),
+                    color: AppColors.primaryAccent.withOpacity(0.2),
                     width: 1,
                   ),
                 ),
@@ -135,13 +135,13 @@ class ItineraryCompactCard extends StatelessWidget {
                     Icon(
                       Icons.visibility_outlined,
                       size: 16,
-                      color: AppColors.primaryGreen,
+                      color: AppColors.primaryAccent,
                     ),
                     const SizedBox(width: AppDimensions.paddingXS),
                     Text(
                       'Tap to view full itinerary',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.primaryGreen,
+                        color: AppColors.primaryAccent,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -165,10 +165,10 @@ class ItineraryCompactCard extends StatelessWidget {
             width: 24,
             height: 24,
             decoration: BoxDecoration(
-              color: AppColors.primaryGreen.withOpacity(0.1),
+              color: AppColors.primaryAccent.withOpacity(0.1),
               shape: BoxShape.circle,
               border: Border.all(
-                color: AppColors.primaryGreen.withOpacity(0.3),
+                color: AppColors.primaryAccent.withOpacity(0.3),
                 width: 1,
               ),
             ),
@@ -176,7 +176,7 @@ class ItineraryCompactCard extends StatelessWidget {
               child: Text(
                 '$dayNumber',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppColors.primaryGreen,
+                  color: AppColors.primaryAccent,
                   fontWeight: FontWeight.w600,
                   fontSize: 10,
                 ),

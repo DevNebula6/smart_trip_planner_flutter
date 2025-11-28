@@ -3,7 +3,10 @@ import '../../auth/presentation/pages/signup_signin_page.dart';
 import '../../trip_planning_chat/presentation/pages/home_page.dart';
 import '../../trip_planning_chat/presentation/pages/chat_page.dart';
 import '../../trip_planning_chat/presentation/pages/itinerary_detail_page.dart';
+import '../../trip_planning_chat/presentation/pages/trip_history_page.dart';
 import '../../trip_planning_chat/data/models/itinerary_models.dart';
+import '../../features/discover/presentation/pages/destination_details_page.dart';
+import '../../features/discover/domain/entities/discover_destination.dart';
 import '../../auth/presentation/pages/profile_page.dart';
 import '../onboarding/onboarding_page.dart';
 
@@ -15,7 +18,9 @@ class AppRoutes {
   static const String home = '/home';
   static const String chat = '/chat';
   static const String itineraryDetail = '/itinerary-detail';
+  static const String destinationDetails = '/destination-details';
   static const String profile = '/profile';
+  static const String tripHistory = '/trip-history';
   static const String sessionDemo = '/session-demo';
 }
 
@@ -50,9 +55,18 @@ class AppRouter {
             sessionId: args?['sessionId'] as String,
           ),
         );
+      
+      case AppRoutes.destinationDetails:
+        final destination = settings.arguments as DiscoverDestination;
+        return MaterialPageRoute(
+          builder: (_) => DestinationDetailsPage(destination: destination),
+        );
         
       case AppRoutes.profile:
         return MaterialPageRoute(builder: (_) => const ProfilePage());
+      
+      case AppRoutes.tripHistory:
+        return MaterialPageRoute(builder: (_) => const TripHistoryPage());
         
       default:
         return MaterialPageRoute(
