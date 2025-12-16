@@ -1,24 +1,31 @@
-# 🌟 Smart Trip Planner - AI-Powered Travel Companion
+# ✈️ Smart Trip Planner
+### *Your AI-Powered Personal Travel Concierge*
 
-A sophisticated Flutter application that leverages AI to create personalized travel itineraries through natural language conversations. Built with **Clean Architecture**, **Google Gemini 2.5 Flash**, and **Function Calling** for real-time data.
-
-## 📱 Demo & Download
-
-| **Demo Video** | **Download APK** |
-|:---:|:---:|
-| [Watch Demo](https://drive.google.com/file/d/1hrgJmOF4odQADNYUMW061fIUFFf7E9CZ/view?usp=sharing) | [**Download Latest APK**](https://drive.google.com/file/d/1AL3J5VGhaqHf7FwC6L5K4C6qHNb6rwop/view?usp=sharing) |
+![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)
+![Dart](https://img.shields.io/badge/dart-%230175C2.svg?style=for-the-badge&logo=dart&logoColor=white)
+![Gemini AI](https://img.shields.io/badge/Google%20Gemini-8E75B2?style=for-the-badge&logo=google%20bard&logoColor=white)
+![Hive](https://img.shields.io/badge/Hive-FF6F00?style=for-the-badge&logo=hive&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
-## 📸 App Screenshots
+## 🚀 Download & Test
 
-| **Home & Discovery** | **Chat & Planning** | **Itinerary Overview** |
-|:---:|:---:|:---:|
-| ![Home](assets/screenshorts/home%20page.png) | ![Destination](assets/screenshorts/destination%20page.png) | ![Itinerary](assets/screenshorts/itinerary%20tab.png) |
+Experience the future of travel planning. Download the latest Android APK below:
 
-| **Transport Options** | **Stays & Hotels** | **Budget Analysis** |
+[![Download APK](https://img.shields.io/badge/Download_APK-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://drive.google.com/file/d/1AL3J5VGhaqHf7FwC6L5K4C6qHNb6rwop/view?usp=sharing)
+
+---
+
+## 📸 App Gallery
+
+| **🏠 Home & Discovery** | **💬 Chat & Planning** | **📅 Itinerary Overview** |
 |:---:|:---:|:---:|
-| ![Transport](assets/screenshorts/transport%20tabpng.png) | ![Stays](assets/screenshorts/stays%20tab.png) | ![Budget](assets/screenshorts/budget%20tab.png) |
+| <img src="assets/screenshorts/home%20page.png" width="300" /> | <img src="assets/screenshorts/destination%20page.png" width="300" /> | <img src="assets/screenshorts/itinerary%20tab.png" width="300" /> |
+
+| **✈️ Transport Options** | **🏨 Stays & Hotels** | **💰 Budget Analysis** |
+|:---:|:---:|:---:|
+| <img src="assets/screenshorts/transport%20tabpng.png" width="300" /> | <img src="assets/screenshorts/stays%20tab.png" width="300" /> | <img src="assets/screenshorts/budget%20tab.png" width="300" /> |
 
 ---
 
