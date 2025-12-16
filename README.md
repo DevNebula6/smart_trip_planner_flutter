@@ -1,256 +1,160 @@
 # 🌟 Smart Trip Planner - AI-Powered Travel Companion
 
-A sophisticated Flutter application that leverages AI to create personalized travel itineraries through natural language conversations, built with Clean Architecture and modern Flutter practices.
+A sophisticated Flutter application that leverages AI to create personalized travel itineraries through natural language conversations. Built with **Clean Architecture**, **Google Gemini 2.5 Flash**, and **Function Calling** for real-time data.
 
-## 📱 Demo Video
-> **https://drive.google.com/file/d/1hrgJmOF4odQADNYUMW061fIUFFf7E9CZ/view?usp=sharing**
+## 📱 Demo & Download
 
-##  APK Download
-> **[Download](https://drive.google.com/file/d/1lijU2KuqDAXNwvwN53-Ur2B2ufJbZ4BI/view?usp=drive_link)**
+| **Demo Video** | **Download APK** |
+|:---:|:---:|
+| [Watch Demo](https://drive.google.com/file/d/1hrgJmOF4odQADNYUMW061fIUFFf7E9CZ/view?usp=sharing) | [**Download Latest APK**](https://drive.google.com/file/d/1AL3J5VGhaqHf7FwC6L5K4C6qHNb6rwop/view?usp=sharing) |
 
+---
+
+## 📸 App Screenshots
+
+| **Home & Discovery** | **Chat & Planning** | **Itinerary Overview** |
+|:---:|:---:|:---:|
+| ![Home](assets/screenshorts/home%20page.png) | ![Destination](assets/screenshorts/destination%20page.png) | ![Itinerary](assets/screenshorts/itinerary%20tab.png) |
+
+| **Transport Options** | **Stays & Hotels** | **Budget Analysis** |
+|:---:|:---:|:---:|
+| ![Transport](assets/screenshorts/transport%20tabpng.png) | ![Stays](assets/screenshorts/stays%20tab.png) | ![Budget](assets/screenshorts/budget%20tab.png) |
+
+---
 
 ## ✨ Key Features
 
-- 🤖 **AI-Powered Trip Planning**: Uses Google Gemini AI for intelligent itinerary generation
-- 💬 **Real-time Chat Interface**: Streaming responses with natural language processing
-- 📱 **Offline-First Design**: Hive-based local storage for offline access
-- 🔄 **Session Persistence**: Resume conversations after app restarts
-- 🗺️ **Maps Integration**: Google Maps integration for location visualization
-- 📊 **Token Tracking**: Cost-aware AI usage monitoring
-- 🎨 **Modern UI/UX**: Material Design with custom themes and animations
-- 🧪 **Comprehensive Testing**: 60%+ test coverage with unit, widget, and integration tests
+### 🤖 Advanced AI Agent
+- **ReAct Pattern**: Uses "Reason + Act" logic to break down complex travel requests into actionable steps.
+- **Context Awareness**: Remembers previous messages, user preferences, and trip details for a seamless conversation.
+- **Zero Hallucination Strategy**: Uses **RAG (Retrieval Augmented Generation)** via function calling to ground responses in real-world data.
+
+### 🛠️ Real-Time Tool Execution
+The AI actively calls external APIs to fetch live data, ensuring accuracy:
+- **✈️ Flights**: Real-time prices and booking links via Sky-Scrapper API.
+- **🏨 Hotels**: Live availability and ratings via Booking.com API.
+- **📍 Place Verification**: Validates attractions using Google Places API.
+- **🌐 Web Search**: Fetches latest events, news, and local tips via Google/Bing Search.
+
+### 📱 User Experience
+- **Natural Language Chat**: No complex forms; just chat like you would with a human agent.
+- **Interactive Maps**: Visualizes daily routes, hotels, and activities on OpenStreetMap.
+- **Smart Budgeting**: Automatically estimates and categorizes costs (Travel vs. Stay vs. Food).
+- **Offline-First**: Full functionality without internet once the trip is saved (using Hive).
+
+---
 
 ## 🏗️ Architecture Overview
 
-This project implements a **Hybrid Clean Architecture** combining:
-- Feature-based module organization
-- Clean Architecture principles (Domain-Data-Presentation)
-- BLoC pattern for state management
-- Repository pattern for data abstraction
+This project implements a **Hybrid Clean Architecture** designed for scalability and testability.
 
+### Layered Structure
 ```
 ┌─────────────────────────────────────────────┐
 │              PRESENTATION LAYER             │
-├─────────────────────────────────────────────┤
-│  Pages │ Widgets │ BLoCs │ States │ Events  │
-└─────────────────────────────────────────────┘
-                        │
-┌─────────────────────────────────────────────┐
-│               DOMAIN LAYER                  │
-├─────────────────────────────────────────────┤
-│    Entities │ Use Cases │ Repositories      │
-└─────────────────────────────────────────────┘
-                        │
-┌─────────────────────────────────────────────┐
-│                DATA LAYER                   │
-├─────────────────────────────────────────────┤
-│  Models │ DataSources │ Repositories Impl   │
+│   (BLoC, Pages, Widgets, UI States)         │
+│   • Handles user input & UI rendering       │
+│   • Manages state (Loading, Success, Error) │
+└──────────────────────┬──────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────┐
+│                 DOMAIN LAYER                │
+│   (Entities, Use Cases, Repositories)       │
+│   • Pure Dart business logic                │
+│   • Defines abstract contracts (Interfaces) │
+└──────────────────────┬──────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────┐
+│                  DATA LAYER                 │
+│   (Data Sources, Models, Hive, APIs)        │
+│   • Implements repositories                 │
+│   • Handles API calls & Local DB            │
 └─────────────────────────────────────────────┘
 ```
 
-## 📂 Project Structure
+### Tech Stack & Libraries
+- **Framework**: Flutter 3.x & Dart 3.7+
+- **State Management**: `flutter_bloc` (Predictable state management)
+- **AI Integration**: `google_generative_ai` (Gemini 2.5 Flash)
+- **Local Storage**: `hive` & `hive_flutter` (Fast NoSQL DB)
+- **Maps**: `flutter_map` & `latlong2` (OpenStreetMap integration)
+- **Networking**: `http` & `dio` (API requests)
+- **Dependency Injection**: `get_it` (Service locator)
 
-```
-lib/
-├── main.dart                    # App entry point
-├── splash_screen.dart           # Splash screen
-├── auth/                        # Authentication module
-├── trip_planning_chat/          # Core trip planning & chat
-├── ai_agent/                    # AI integration services
-├── core/                        # Shared core components
-├── shared/                      # Cross-feature components
-└── utilities/                   # Helper functions
-```
+---
+
+## 🧠 How the AI Agent Works
+
+The app uses a sophisticated **Agent Chain** to generate itineraries:
+
+1.  **User Intent**: The user asks, "Plan a trip to Paris for 5 days."
+2.  **Reasoning**: The AI analyzes the request and determines missing info (dates, budget) or required data (flights, hotels).
+3.  **Tool Execution (Function Calling)**:
+    - Calls `searchFlights(origin, dest, date)`
+    - Calls `searchHotels(dest, date)`
+    - Calls `searchPlaces(query)` to verify attractions.
+4.  **Synthesis**: The AI combines API results into a structured JSON itinerary.
+5.  **Rendering**: The app parses the JSON and renders interactive widgets (Itinerary Card, Map, Budget).
+
+### Specializations
+- **Token Optimization**: Efficiently manages context window to reduce API costs.
+- **Error Recovery**: Automatically retries malformed JSON responses from the AI.
+- **Session Persistence**: Saves chat history and state to Hive, allowing users to resume planning days later.
+
+---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-
-- Flutter SDK ^3.7.2
-- Dart SDK ^3.7.2
-- Android Studio / VS Code
-- Google Gemini API Key
-- (Optional) Google Search API Key
-- (Optional) Bing Search API Key
+- Flutter SDK
+- API Keys: Google Gemini, RapidAPI (Sky-Scrapper, Booking.com), Google Places (Optional).
 
 ### Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/DevNebula6/smart_trip_planner_flutter.git
-   cd smart_trip_planner_flutter
-   ```
+1.  **Clone the repository**
+    ```bash
+    git clone https://github.com/DevNebula6/smart_trip_planner_flutter.git
+    ```
 
-2. **Install dependencies**
-   ```bash
-   flutter pub get
-   flutter pub run build_runner build
-   ```
+2.  **Install dependencies**
+    ```bash
+    flutter pub get
+    ```
 
-3. **Configure API Keys**
-   Create a `.env` file in the root directory:
-   ```env
-   GEMINI_API_KEY=your_gemini_api_key_here
-   GOOGLE_SEARCH_API_KEY=your_google_search_api_key_here
-   GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_here
-   BING_SEARCH_API_KEY=your_bing_search_api_key_here
-   ```
+3.  **Configure Environment**
+    Create a `.env` file in the root:
+    ```env
+    GEMINI_API_KEY=your_gemini_key
+    RAPID_API_KEY=your_rapid_api_key
+    GOOGLE_PLACES_API_KEY=your_places_key
+    ```
 
-4. **Run the application**
-   ```bash
-   flutter run
-   ```
-
-### Getting API Keys
-
-1. **Google Gemini AI**:
-   - Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
-   - Create a new API key
-   - Add to `.env` as `GEMINI_API_KEY`
-
-2. **Google Search API (Optional)**:
-   - Go to [Google Cloud Console](https://console.cloud.google.com/)
-   - Enable Custom Search API
-   - Create credentials and get API key
-   - Set up Custom Search Engine
-
-3. **Bing Search API (Optional)**:
-   - Visit [Azure Portal](https://portal.azure.com/)
-   - Create Bing Search resource
-   - Get API key
-
-## 🔄 How the AI Agent Chain Works
-
-### 1. **User Input Processing**
-```
-User Prompt → ChatBloc → AIAgentService → Context Preparation
-```
-
-### 2. **AI Processing Chain**
-```
-GeminiService → Function Calling → Web Search → Data Enhancement → 
-Response Generation → JSON Parsing → Schema Validation → Storage
-```
-
-### 3. **Response Streaming**
-```
-Gemini API Stream → Real-time UI Updates → Session Persistence → 
-Offline Storage → User Display
-```
-
-### 4. **Session Management**
-```
-Session Creation → Context Preservation → Conversation History → 
-Token Tracking → Cost Optimization → 90-day Retention
-```
-
-## 📊 Token Cost Analysis
-
-Based on testing with various itinerary requests:
-
-| Operation Type | Avg Input Tokens | Avg Output Tokens | Estimated Cost* |
-|---------------|------------------|-------------------|----------------|
-| Initial Itinerary | 450 | 850 | $0.00195 |
-| Refinement | 1200 | 400 | $0.00210 |
-| Follow-up Question | 800 | 200 | $0.00135 |
-
-*Costs based on Gemini Pro pricing (as of 2024)
-
-## 🧪 Testing
-
-Run the comprehensive test suite:
-
-```bash
-# Unit tests
-flutter test test/unit/
-
-# Widget tests  
-flutter test test/widget/
-
-# Integration tests
-flutter test test/integration/
-
-# All tests with coverage
-flutter test --coverage
-```
-
-## 🛠️ Technology Stack
-
-- **Framework**: Flutter 3.x with Dart SDK ^3.7.2
-- **State Management**: flutter_bloc ^8.1.3
-- **AI Integration**: google_generative_ai ^0.4.7
-- **Local Storage**: hive ^2.2.3
-- **HTTP Client**: http ^1.1.2
-- **UI**: google_fonts, animated_text_kit, custom Material theme
-- **Maps**: url_launcher for Google Maps integration
-- **Testing**: flutter_test, integration_test
-
-## 🎯 Assignment Requirements Compliance
-
-✅ **S-1: Create trip via chat** - Implemented with streaming UI
-✅ **S-2: Refine itinerary** - Follow-up questions with diff highlighting  
-✅ **S-3: Save & revisit** - Hive storage with offline access
-✅ **S-4: Offline view** - Complete offline functionality
-✅ **S-5: Basic metrics** - Token tracking with debug overlay
-✅ **S-6: Web search** - Real-time information integration
-
-### Technical Requirements Met
-- ✅ Clean Architecture with feature-based organization
-- ✅ BLoC pattern for state management  
-- ✅ Streaming UI with real-time responses
-- ✅ Hive persistence behind repository interface
-- ✅ Google Maps integration for coordinates
-- ✅ Comprehensive error handling
-- ✅ 60%+ test coverage achieved
-
-## 📱 Screenshots
-
-| Home Screen | Chat Interface | Itinerary View |
-|-------------|----------------|----------------|
-| ![Home](figma design screenshort/Screenshot 2025-09-05 235324.png) | ![Chat](figma design screenshort/Screenshot 2025-09-05 235335.png) | ![Itinerary](figma design screenshort/Screenshot 2025-09-05 235342.png) |
-
-## 📚 Documentation
-
-- **[Complete Source Code Documentation](COMPLETE_SOURCE_CODE_DOCUMENTATION.md)** - Comprehensive code architecture overview
-- **[High-Level & Low-Level Design](HIGH_LOW_LEVEL_DESIGN.md)** - System architecture and detailed design
-- **[Architecture Guide](ARCHITECTURE_GUIDE.md)** - Feature-based architecture explanation
-
-## 🔧 Development
-
-### Code Generation
-```bash
-flutter pub run build_runner build --delete-conflicting-outputs
-```
-
-### Debug Builds
-```bash
-flutter run --debug
-```
-
-### Release Builds
-```bash
-flutter build apk --release
-flutter build ios --release
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is developed as part of a mobile engineering internship assignment.
-
-## 🙏 Acknowledgments
-
-- Google Gemini AI for intelligent trip planning
-- Flutter team for the amazing framework
-- Open source community for excellent packages
+4.  **Run the app**
+    ```bash
+    flutter run
+    ```
 
 ---
 
-**Built with ❤️ using Flutter and AI**
+## 📚 Documentation
+
+For detailed technical information, refer to the documentation files:
+
+- **[Feature Documentation](FEATURE_DOCUMENTATION.md)**: Detailed breakdown of features.
+- **[AI Agent Architecture](AI_AGENT_ARCHITECTURE.md)**: Deep dive into the AI logic and tools.
+- **[API Integration](API_INTEGRATION_DOCUMENTATION.md)**: Details on external APIs used.
+- **[Project Diagrams](PROJECT_DIAGRAMS.md)**: UML and Architecture diagrams.
+
+---
+
+## 🧪 Testing
+
+The project maintains high code quality with comprehensive tests:
+
+```bash
+flutter test
+```
+
+---
+
+**Developed by [Your Name]**

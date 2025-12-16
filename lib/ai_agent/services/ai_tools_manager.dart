@@ -102,9 +102,10 @@ class AIToolsManager {
 
     // Web Search Tool
     if (webSearchTool != null) {
-      functionDeclarations.add(FunctionDeclaration(
+      functionDeclarations.add(
+      FunctionDeclaration(
         'webSearch',
-        'Search the web for real-time information about travel destinations, restaurants, events, attractions. Use for current pricing, hours, reviews.',
+        'Search the web for real-time information about travel destinations, restaurants, events, attractions, transportations. Use for current pricing, hours, reviews.',
         Schema(
           SchemaType.object,
           properties: {
@@ -114,7 +115,7 @@ class AIToolsManager {
             ),
             'maxResults': Schema(
               SchemaType.integer,
-              description: 'Maximum results to return (default: 5, max: 10)',
+              description: 'Maximum results to return (default: 8, max: 13)',
             ),
           },
           requiredProperties: ['query'],

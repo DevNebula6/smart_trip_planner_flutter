@@ -132,7 +132,7 @@ class GoogleSearchService implements WebSearchService {
   }) : _httpClient = httpClient ?? http.Client();
   
   @override
-  Future<List<SearchResult>> search(String query, {int maxResults = 5}) async {
+  Future<List<SearchResult>> search(String query, {int maxResults = 8}) async {
     if (query.trim().isEmpty) {
       throw const WebSearchException('Search query cannot be empty');
     }
@@ -447,10 +447,10 @@ Examples:
           },
           'maxResults': {
             'type': 'integer',
-            'description': 'Maximum number of search results to return (default: 5, max: 10)',
+            'description': 'Maximum number of search results to return (default: 8, max: 13)',
             'minimum': 1,
-            'maximum': 10,
-            'default': 5,
+            'maximum': 13,
+            'default': 8,
           }
         },
         'required': ['query']
